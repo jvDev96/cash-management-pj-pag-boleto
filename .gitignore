@@ -11,3 +11,7 @@ Thumbs.db
 # Ambiente local (nunca versionar segredo/config de máquina)
 .env
 .env.local
+
+# Material de estudo/preparação pessoal - não faz parte do entregável do case
+CONCEITOS.md
+FRASES.md
