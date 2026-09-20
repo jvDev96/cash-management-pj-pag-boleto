@@ -30,3 +30,19 @@ feliz) + `SALDO_LIBERADO`, `REJEITADO`, `FALHOU` (fluxo de compensação).
 `SALDO_LIBERADO` não é nem sucesso nem falha — é o estado **transitório** de quando a
 compensação está devolvendo o saldo reservado, antes de pousar em `REJEITADO` (falhou
 cedo, antes de reservar) ou `FALHOU` (falhou depois de reservar/tentar liquidar).
+
+## Por que a regra de transição mora no enum (e não no Orchestrator ou numa classe à parte)
+
+**Onde apareceu:** decisão de design antes de implementar `podeTransicionarPara` em `SagaState.java`.
+
+Comparado com as alternativas (regra na entidade `Saga`, numa classe `SagaTransitionRules`
+separada, ou espalhada em `if`s no `SagaOrchestrator`), colocar a regra dentro do
+próprio enum ganha por: (1) **coesão** — estado e regra sobre o estado são o mesmo
+conceito; (2) evita que uma transição inválida passe despercebida por esquecimento de
+checagem em algum ponto do código; (3) **testável sem infraestrutura** — dá pra testar
+a regra pura, sem Spring/banco/fila; (4) **fonte única da verdade**, sem risco de duas
+cópias da mesma regra divergirem. Limite reconhecido: essa escolha só funciona bem
+porque a máquina é pequena e fixa (8 estados, definidos pelo PDF). Se um dia a regra
+precisasse ser configurável em runtime (ex: tela admin editando transições), um enum
+hard-coded em tempo de compilação viraria uma limitação, não uma vantagem — nesse
+cenário a resposta certa seria uma tabela no banco.
