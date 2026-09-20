@@ -48,6 +48,22 @@ O projeto usa o **Maven Wrapper** (`mvnw`) em vez de exigir Maven instalado glob
 | `.\mvnw.cmd test` | Roda os testes unitários (JUnit). |
 | `.\mvnw.cmd clean package` | Compila e gera o `.jar` final, rodando os testes no caminho. |
 
+### Referência: ciclo de vida do Maven
+
+Os comandos acima usam `mvnw` (o wrapper, não exige Maven instalado — [ver nota acima](#backend-pasta-backend-java--maven)). O ciclo de vida por trás é o mesmo do `mvn` "puro":
+
+| Comando | Pra que serve |
+|---|---|
+| `mvn clean` | Apaga a pasta `target/`, removendo compilados antigos — build do zero. |
+| `mvn compile` | Compila o código-fonte e gera os `.class` em `target/`. |
+| `mvn test` | Roda os testes unitários (JUnit). |
+| `mvn package` | Compila, testa e empacota o resultado em `.jar`/`.war` dentro de `target/`. |
+| `mvn install` | Faz tudo acima e ainda instala o artefato no repositório Maven local (`~/.m2`), pra outros projetos da máquina reaproveitarem como dependência. |
+| `mvn clean install` | Combinação mais usada: limpa do zero e instala o artefato atualizado localmente. |
+| `mvn clean package` | Limpa, compila e empacota, sem instalar no repositório local. |
+| `mvn ... -DskipTests` | Pula a execução dos testes (agiliza o build, ex: `mvn clean install -DskipTests`). |
+| `mvn dependency:tree` | Mostra a árvore de dependências no terminal — útil pra achar conflito de versão. |
+
 ## Frontend (pasta `frontend/`, Node + npm)
 
 | Comando | Pra que serve |
