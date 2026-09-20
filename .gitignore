@@ -1,0 +1,13 @@
+# IDE / editor / ferramentas locais
+.vscode/
+.idea/
+.claude/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ambiente local (nunca versionar segredo/config de máquina)
+.env
+.env.local

@@ -1,0 +1,41 @@
+# DECISÃO: Postgres + RabbitMQ rodando localmente via Docker Compose.
+# PORQUÊ: o PDF do case permite infra local (não precisa provisionar nada na AWS).
+#         Postgres guarda o estado da Saga (idempotência via UNIQUE); RabbitMQ
+#         é a mensageria entre o Orchestrator e os serviços simulados.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: boleto-saga-postgres
+    environment:
+      POSTGRES_DB: boleto_saga
+      POSTGRES_USER: boleto_saga
+      POSTGRES_PASSWORD: boleto_saga
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U boleto_saga"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    # imagem "-management" inclui a UI web em http://localhost:15672
+    # (usuário/senha: boleto_saga/boleto_saga) — útil pra ver filas e DLQ ao vivo.
+    image: rabbitmq:3-management-alpine
+    container_name: boleto-saga-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: boleto_saga
+      RABBITMQ_DEFAULT_PASS: boleto_saga
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
