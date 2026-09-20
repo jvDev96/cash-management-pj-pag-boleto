@@ -56,3 +56,15 @@ O projeto usa o **Maven Wrapper** (`mvnw`) em vez de exigir Maven instalado glob
 | `npm run dev` | Sobe o servidor de desenvolvimento do Vite com hot-reload. |
 | `npm run build` | Gera o build de produção (TypeScript é checado nesse passo). |
 | `npm run test` | Roda os testes (Vitest) — será adicionado quando começarmos a validação do boleto. |
+
+## Problemas conhecidos
+
+**`unable to get image ... dockerDesktopLinuxEngine ... system cannot find the file specified`**
+O Docker Desktop não está aberto. Abra o app (ícone da baleia) e espere ele ficar "Running" antes de rodar `docker compose up -d` de novo.
+
+**RabbitMQ reinicia sozinho / `Exited (1)` logo após subir, log mostra `Error when reading /var/lib/rabbitmq/.erlang.cookie: eacces`**
+Falha transitória na primeira subida do container no Docker Desktop/Windows — o processo interno do RabbitMQ (Erlang) não consegue ler um arquivo de permissão a tempo. Corrige recriando só o container do RabbitMQ, sem mexer no Postgres:
+```powershell
+docker compose rm -f -s rabbitmq
+docker compose up -d rabbitmq
+```
