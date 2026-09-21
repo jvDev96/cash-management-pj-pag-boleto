@@ -184,10 +184,18 @@ public class SagaOrchestrator {
     // DIFERENTE do esperado aqui. Nesse caso so confirma (ack) sem reaplicar
     // a transicao - em vez de deixar transicionarPara(...) lancar excecao e
     // mandar um evento duplicado, mas inofensivo, pra DLQ por engano.
+    // DECISAO: saga == null lanca excecao (vai pra DLQ via o catch do
+    // listener); estado divergente so retorna false (ack, ignora em
+    // silencio).
+    // PORQUE: sao categorias diferentes de problema. Estado divergente e
+    // duplicata/reentrega esperada (at-least-once) - benigno, so ignorar.
+    // Saga nula e anomalia de verdade: nosso proprio sistema so cria um
+    // sagaId a partir de uma saga ja salva, entao um evento com sagaId
+    // inexistente indica algo genuinamente errado - merece ficar preservado
+    // na DLQ pra investigar, nao sumir com so uma linha de log como rastro.
     private boolean podeProcessar(UUID sagaId, Saga saga, SagaState estadoEsperado) {
         if (saga == null) {
-            log.error("Evento recebido para sagaId inexistente: {}", sagaId);
-            return false;
+            throw new IllegalStateException("Evento recebido para sagaId inexistente: " + sagaId);
         }
         if (saga.getEstado() != estadoEsperado) {
             log.warn("Evento duplicado ou fora de ordem ignorado: sagaId={}, estadoAtual={}, estadoEsperado={}",
