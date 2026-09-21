@@ -35,8 +35,16 @@ public class ValidacaoBoletoListener {
                          @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
             BoletoValidadoEvent evento = processar(comando);
-            channel.basicAck(deliveryTag, false);
+            // DECISAO: publica a resposta ANTES de confirmar (ack) a mensagem
+            // original.
+            // PORQUE: se o ack viesse primeiro e o convertAndSend falhasse
+            // depois, a mensagem original ja teria sumido (confirmada) mas a
+            // resposta nunca teria sido publicada - perda silenciosa, sem
+            // como recuperar. Nessa ordem, se convertAndSend falhar, o catch
+            // ainda pode dar nack valido (a mensagem original nunca foi
+            // confirmada) e ela vai pra DLQ, onde pode ser investigada.
             rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.EVT_BOLETO_VALIDADO, evento);
+            channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             log.error("Erro processando validacao do boleto (sagaId={})", comando.sagaId(), e);
             channel.basicNack(deliveryTag, false, false);

@@ -33,8 +33,9 @@ public class ContaSaldoListener {
                           @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
             SaldoReservadoEvent evento = processarReserva(comando);
-            channel.basicAck(deliveryTag, false);
+            // ver DECISAO sobre ordem publish-antes-do-ack em ValidacaoBoletoListener
             rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.EVT_SALDO_RESERVADO, evento);
+            channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             log.error("Erro reservando saldo (sagaId={})", comando.sagaId(), e);
             channel.basicNack(deliveryTag, false, false);
@@ -45,9 +46,9 @@ public class ContaSaldoListener {
     public void compensar(CompensarReservaCommand comando, Channel channel,
                            @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
-            channel.basicAck(deliveryTag, false);
             rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.EVT_SALDO_LIBERADO,
                     new SaldoLiberadoEvent(comando.sagaId()));
+            channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             log.error("Erro compensando reserva de saldo (sagaId={})", comando.sagaId(), e);
             channel.basicNack(deliveryTag, false, false);

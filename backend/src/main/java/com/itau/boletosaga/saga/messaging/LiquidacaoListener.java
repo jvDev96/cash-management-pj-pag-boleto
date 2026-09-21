@@ -34,8 +34,9 @@ public class LiquidacaoListener {
                           @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
             LiquidacaoProcessadaEvent evento = processar(comando);
-            channel.basicAck(deliveryTag, false);
+            // ver DECISAO sobre ordem publish-antes-do-ack em ValidacaoBoletoListener
             rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.EVT_LIQUIDACAO_PROCESSADA, evento);
+            channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             log.error("Erro processando liquidacao (sagaId={})", comando.sagaId(), e);
             channel.basicNack(deliveryTag, false, false);
