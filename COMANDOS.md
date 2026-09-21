@@ -64,6 +64,32 @@ Os comandos acima usam `mvnw` (o wrapper, não exige Maven instalado — [ver no
 | `mvn ... -DskipTests` | Pula a execução dos testes (agiliza o build, ex: `mvn clean install -DskipTests`). |
 | `mvn dependency:tree` | Mostra a árvore de dependências no terminal — útil pra achar conflito de versão. |
 
+## Testando a API REST (curl, PowerShell)
+
+Backend precisa estar rodando (`docker compose up -d` + `.\mvnw.cmd spring-boot:run` dentro de `backend/`).
+
+**Criar um pagamento** — `Idempotency-Key` é obrigatório (sem ele, dá `400`):
+```powershell
+curl -X POST http://localhost:8080/pagamentos `
+  -H "Content-Type: application/json" `
+  -H "Idempotency-Key: chave-unica-001" `
+  -d '{\"linhaDigitavel\":\"34191790010104351004791020150008\",\"valor\":150.00}'
+```
+Resposta esperada: `202 Accepted` na primeira vez, com `sagaId` e `estado: RECEBIDO`.
+
+**Reenviar com a mesma `Idempotency-Key`** (mesmo comando de novo) → `200 OK`, mesmo `sagaId`, estado já avançado (a saga processa sozinha em segundo plano).
+
+**Consultar status** de uma saga específica:
+```powershell
+curl http://localhost:8080/pagamentos/<sagaId-que-voce-recebeu>
+```
+
+**Valores pra testar cada caminho da simulação** (regra determinística, ver `CONCEITOS.md`):
+- `valor` < 500 → sucesso completo, termina em `CONCLUIDO`
+- `valor` entre 500 e 700 → falha na liquidação (com compensação), termina em `FALHOU`
+- `valor` ≥ 700 → saldo insuficiente, termina em `REJEITADO`
+- linha digitável terminando em `0000` → boleto inexistente, falha já na validação
+
 ## Frontend (pasta `frontend/`, Node + npm)
 
 | Comando | Pra que serve |

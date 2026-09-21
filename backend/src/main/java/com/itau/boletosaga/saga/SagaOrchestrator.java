@@ -15,11 +15,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.AmqpHeaders;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.Optional;
 import java.util.UUID;
 
 // DECISAO: SagaOrchestrator mora em "saga" (domínio), não em "saga.messaging".
@@ -40,21 +42,38 @@ public class SagaOrchestrator {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    // DECISAO: checa se ja existe uma saga com essa idempotencyKey antes de
-    // criar uma nova.
-    // PORQUE: primeira camada de defesa do RNF01. A segunda camada (UNIQUE
-    // constraint no banco, pra corrida de concorrencia real entre duas
-    // requisicoes simultaneas com a mesma chave) fica pro endpoint REST, que
-    // ainda vamos construir - la faz mais sentido tratar
-    // DataIntegrityViolationException.
+    // DECISAO: registro devolvido pelo iniciar() diz se a saga e nova ou ja
+    // existia.
+    // PORQUE: o controller REST precisa saber disso pra decidir o codigo
+    // HTTP certo - 202 (Accepted) numa criacao de verdade, 200 (OK) num
+    // reenvio idempotente que so devolveu o que ja existia.
+    public record ResultadoIniciarSaga(Saga saga, boolean novaSaga) {
+    }
+
+    // DECISAO: duas camadas de defesa contra idempotencyKey duplicada.
+    // PORQUE: (1) findByIdempotencyKey antes de criar cobre o caso comum
+    // (reenvio depois que a primeira saga ja existe). (2) capturar
+    // DataIntegrityViolationException cobre a corrida real - duas
+    // requisicoes com a MESMA chave chegando ao mesmo tempo, as duas
+    // passando pelo findBy antes de qualquer uma salvar. Nesse caso a
+    // constraint UNIQUE do banco rejeita a segunda gravacao; em vez de
+    // deixar isso virar um erro feio pro cliente, buscamos de novo e
+    // devolvemos a saga que "venceu" a corrida, como se fosse reenvio normal.
     // LIMITACAO CONHECIDA: salvar a saga e publicar o comando nao sao
     // atomicos (sao dois sistemas diferentes). Se o publish falhar depois do
-    // save, a saga fica presa em RECEBIDO pra sempre, sem o comando ter sido
-    // enviado - e exatamente o tipo de caso que o timeout/scheduler (RNF03,
-    // proximo passo do roadmap) existe pra detectar e reagir.
-    public Saga iniciar(String idempotencyKey, String linhaDigitavel, BigDecimal valor) {
-        return sagaRepository.findByIdempotencyKey(idempotencyKey)
-                .orElseGet(() -> criarNovaSaga(idempotencyKey, linhaDigitavel, valor));
+    // save, a saga fica presa em RECEBIDO ate o timeout/scheduler (RNF03)
+    // detectar e reagir.
+    public ResultadoIniciarSaga iniciar(String idempotencyKey, String linhaDigitavel, BigDecimal valor) {
+        Optional<Saga> existente = sagaRepository.findByIdempotencyKey(idempotencyKey);
+        if (existente.isPresent()) {
+            return new ResultadoIniciarSaga(existente.get(), false);
+        }
+        try {
+            return new ResultadoIniciarSaga(criarNovaSaga(idempotencyKey, linhaDigitavel, valor), true);
+        } catch (DataIntegrityViolationException e) {
+            Saga saga = sagaRepository.findByIdempotencyKey(idempotencyKey).orElseThrow(() -> e);
+            return new ResultadoIniciarSaga(saga, false);
+        }
     }
 
     private Saga criarNovaSaga(String idempotencyKey, String linhaDigitavel, BigDecimal valor) {
