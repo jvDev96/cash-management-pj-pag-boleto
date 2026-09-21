@@ -2,11 +2,13 @@ import { calcularMod10 } from "./mod10";
 import { calcularMod11 } from "./mod11";
 
 export type FormatoLinhaDigitavel =
-  | "CODIGO_DE_BARRAS"
-  | "BOLETO"
-  | "CONVENIO"
-  | "INVALIDO";
-  
+| "CODIGO_DE_BARRAS"
+| "BOLETO"
+| "CONVENIO"
+| "INVALIDO";
+
+export const TAMANHO_MINIMO_LINHA_DIGITAVEL = 44; //especificação FEBRABAN
+export const TAMANHO_MAXIMO_LINHA_DIGITAVEL = 70; //margem de segurança de UI
 
 export function detectarFormato(linhaDigitavel: string): FormatoLinhaDigitavel {
   // DECISAO: retorno e um union type de strings literais, nao boolean nem string livre.
