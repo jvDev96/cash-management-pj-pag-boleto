@@ -1,0 +1,91 @@
+package com.itau.boletosaga.saga;
+
+import com.itau.boletosaga.saga.messaging.CompensarReservaCommand;
+import com.itau.boletosaga.saga.messaging.SagaMessagingConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+
+// DECISAO: classe separada de SagaOrchestrator.
+// PORQUE: o Orchestrator reage a EVENTOS (o que aconteceu); esse scheduler
+// reage a PASSAGEM DE TEMPO (o que nao aconteceu). Sao dois gatilhos
+// diferentes de mudanca de estado - cada classe fica com uma
+// responsabilidade so.
+@Component
+public class SagaTimeoutScheduler {
+
+    private static final Logger log = LoggerFactory.getLogger(SagaTimeoutScheduler.class);
+
+    // so os estados "esperando resposta de alguem" precisam de vigia
+    private static final List<SagaState> ESTADOS_MONITORADOS = List.of(
+            SagaState.RECEBIDO, SagaState.VALIDADO, SagaState.LIQUIDACAO_ENVIADA, SagaState.SALDO_LIBERADO
+    );
+
+    private final SagaRepository sagaRepository;
+    private final RabbitTemplate rabbitTemplate;
+    private final long timeoutSegundos;
+
+    public SagaTimeoutScheduler(SagaRepository sagaRepository, RabbitTemplate rabbitTemplate,
+                                 @Value("${saga.timeout.segundos:30}") long timeoutSegundos) {
+        this.sagaRepository = sagaRepository;
+        this.rabbitTemplate = rabbitTemplate;
+        this.timeoutSegundos = timeoutSegundos;
+    }
+
+    @Scheduled(fixedDelayString = "${saga.timeout.intervalo-verificacao-ms:10000}")
+    public void verificarSagasPresas() {
+        Instant limite = Instant.now().minus(Duration.ofSeconds(timeoutSegundos));
+        List<Saga> presas = sagaRepository.findByEstadoInAndAtualizadoEmBefore(ESTADOS_MONITORADOS, limite);
+
+        for (Saga saga : presas) {
+            try {
+                aplicarTimeout(saga);
+            } catch (OptimisticLockingFailureException e) {
+                // DECISAO: capturar essa excecao especificamente e so
+                // logar, sem propagar.
+                // PORQUE: significa que a saga mudou de estado entre a
+                // consulta e o save - o SagaOrchestrator processou um
+                // evento real bem nessa janela (a corrida que o @Version
+                // existe pra proteger). Nao e erro do sistema, e o timeout
+                // chegando tarde demais - a saga ja nao precisa mais dele.
+                log.info("Saga {} mudou de estado antes do timeout ser aplicado - ignorando.", saga.getId());
+            } catch (Exception e) {
+                log.error("Erro aplicando timeout na saga {}", saga.getId(), e);
+            }
+        }
+    }
+
+    private void aplicarTimeout(Saga saga) {
+        SagaState estadoOriginal = saga.getEstado();
+        log.warn("Timeout detectado: sagaId={}, estado={}, parada desde={}",
+                saga.getId(), estadoOriginal, saga.getAtualizadoEm());
+
+        switch (estadoOriginal) {
+            case RECEBIDO, VALIDADO -> {
+                saga.registrarFalha("Timeout aguardando resposta na etapa " + estadoOriginal);
+                saga.transicionarPara(SagaState.REJEITADO);
+                sagaRepository.save(saga);
+            }
+            case LIQUIDACAO_ENVIADA -> {
+                saga.registrarFalha("Timeout aguardando confirmacao da liquidacao");
+                saga.transicionarPara(SagaState.SALDO_LIBERADO);
+                sagaRepository.save(saga);
+                rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.CMD_COMPENSAR_RESERVA,
+                        new CompensarReservaCommand(saga.getId()));
+            }
+            case SALDO_LIBERADO -> {
+                saga.transicionarPara(SagaState.FALHOU);
+                sagaRepository.save(saga);
+            }
+            default -> log.warn("Timeout monitorando um estado inesperado: {}", estadoOriginal);
+        }
+    }
+}
