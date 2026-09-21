@@ -84,3 +84,6 @@ Falha transitória na primeira subida do container no Docker Desktop/Windows —
 docker compose rm -f -s rabbitmq
 docker compose up -d rabbitmq
 ```
+
+**Aplicação sobe sem erro, mas nenhuma fila/exchange aparece na UI do RabbitMQ (`localhost:15672`)**
+Bug confirmado neste Spring Boot 4.1.1: o `RabbitAdmin` não dispara a declaração automática de filas/exchanges/bindings na inicialização (comportamento que era automático em versões anteriores do Spring). Corrigido em `SagaMessagingConfig.java` com um `ApplicationListener<ApplicationReadyEvent>` que chama `amqpAdmin.initialize()` explicitamente — já faz parte do código, não precisa refazer nada, só documentado aqui pra não assustar se aparecer de novo em outra máquina/versão.

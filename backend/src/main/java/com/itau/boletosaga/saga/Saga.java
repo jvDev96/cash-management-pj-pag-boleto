@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -43,6 +44,20 @@ public class Saga {
 
     @Column(nullable = false)
     private Instant atualizadoEm;
+
+    // DECISAO: campo @Version pra lock otimista.
+    // PORQUE: existe uma corrida real possivel entre o SagaOrchestrator
+    // (reagindo a um evento chegando) e o futuro SagaTimeoutScheduler
+    // (decidindo que essa saga esta presa) tentando escrever no MESMO
+    // registro ao mesmo tempo, com decisoes diferentes. Sem isso, quem salva
+    // por ultimo vence silenciosamente, podendo sobrescrever um resultado
+    // real com um timeout falso (ou o contrario). Com @Version, o Hibernate
+    // controla um numero de versao sozinho: se dois processos tentam salvar
+    // a partir da mesma versao, o segundo recebe
+    // ObjectOptimisticLockingFailureException em vez de sobrescrever sem
+    // avisar.
+    @Version
+    private Long version;
 
     // DECISAO: construtor vazio protected, nao public
     // PORQUE: o Hibernate exige um construtor sem argumentos pra conseguir
@@ -123,5 +138,9 @@ public class Saga {
 
     public Instant getAtualizadoEm() {
         return atualizadoEm;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 }
