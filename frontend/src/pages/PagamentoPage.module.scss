@@ -19,22 +19,6 @@
   background-color: var(--cor-branco);
 }
 
-.botaoVoltar {
-  display: inline-flex;
-  align-items: center;
-  margin-bottom: var(--espaco-md);
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--cor-texto-secundario);
-  font-size: 14px;
-  cursor: pointer;
-
-  &:hover {
-    color: var(--cor-secundaria);
-  }
-}
-
 %botaoLargo {
   width: 100%;
   margin-top: var(--espaco-lg);

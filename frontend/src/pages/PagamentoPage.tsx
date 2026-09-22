@@ -1,14 +1,13 @@
-import { useNavigate } from 'react-router-dom'
 import { useBoletoValidation } from '../hooks/useBoletoValidation'
 import { useBoletoPreview } from '../hooks/useBoletoPreview'
 import { usePaymentSaga } from '../hooks/usePaymentSaga'
 import { BoletoInput } from '../components/BoletoInput'
 import { PaymentReviewCard } from '../components/PaymentReviewCard'
 import { PaymentStatusTracker } from '../components/PaymentStatusTracker'
+import { BotaoVoltar } from '../components/BotaoVoltar'
 import styles from './PagamentoPage.module.scss'
 
 export function PagamentoPage() {
-  const navigate = useNavigate()
   const { linhaDigitavel, alterarLinhaDigitavel, resultado, limpar } = useBoletoValidation()
   const { preview } = useBoletoPreview(linhaDigitavel, resultado.valido)
   const {
@@ -51,9 +50,7 @@ export function PagamentoPage() {
   if (sagaId) {
     return (
       <div className={styles.pagina}>
-        <button type="button" className={styles.botaoVoltar} onClick={() => navigate(-1)}>
-          ← Voltar
-        </button>
+        <BotaoVoltar />
         <h1 className={styles.titulo}>Pagar Boleto</h1>
         <p className={styles.subtitulo}>Insira o código para consultar e realizar o pagamento</p>
         <PaymentStatusTracker
@@ -78,9 +75,7 @@ export function PagamentoPage() {
 
   return (
     <div className={styles.pagina}>
-      <button type="button" className={styles.botaoVoltar} onClick={() => navigate(-1)}>
-        ← Voltar
-      </button>
+      <BotaoVoltar />
       <h1 className={styles.titulo}>Pagar Boleto</h1>
       <p className={styles.subtitulo}>Insira o código para consultar e realizar o pagamento</p>
       <div className={styles.card}>
