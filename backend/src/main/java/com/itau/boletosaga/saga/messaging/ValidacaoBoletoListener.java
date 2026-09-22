@@ -34,6 +34,7 @@ public class ValidacaoBoletoListener {
     public void validar(ValidarBoletoCommand comando, Channel channel,
                          @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
+            SimulacaoDelay.aplicar();
             BoletoValidadoEvent evento = processar(comando);
             // DECISAO: publica a resposta ANTES de confirmar (ack) a mensagem
             // original.

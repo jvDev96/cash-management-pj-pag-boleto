@@ -33,6 +33,7 @@ public class LiquidacaoListener {
     public void liquidar(EnviarLiquidacaoCommand comando, Channel channel,
                           @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
+            SimulacaoDelay.aplicar();
             LiquidacaoProcessadaEvent evento = processar(comando);
             // ver DECISAO sobre ordem publish-antes-do-ack em ValidacaoBoletoListener
             rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.EVT_LIQUIDACAO_PROCESSADA, evento);

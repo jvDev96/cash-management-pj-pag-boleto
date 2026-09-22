@@ -32,6 +32,7 @@ public class ContaSaldoListener {
     public void reservar(ReservarSaldoCommand comando, Channel channel,
                           @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
+            SimulacaoDelay.aplicar();
             SaldoReservadoEvent evento = processarReserva(comando);
             // ver DECISAO sobre ordem publish-antes-do-ack em ValidacaoBoletoListener
             rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.EVT_SALDO_RESERVADO, evento);
@@ -46,6 +47,7 @@ public class ContaSaldoListener {
     public void compensar(CompensarReservaCommand comando, Channel channel,
                            @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
+            SimulacaoDelay.aplicar();
             rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.EVT_SALDO_LIBERADO,
                     new SaldoLiberadoEvent(comando.sagaId()));
             channel.basicAck(deliveryTag, false);
