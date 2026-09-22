@@ -92,12 +92,14 @@ curl http://localhost:8080/pagamentos/<sagaId-que-voce-recebeu>
 
 ## Frontend (pasta `frontend/`, Node + npm)
 
+**Setup inicial (uma vez só):** copiar `.env.example` pra `.env` (`cp .env.example .env` ou manualmente) — define `VITE_API_BASE_URL`, a URL do backend que o front consome. `.env` não é versionado (regra geral do `.gitignore`, mesmo esse valor não sendo segredo), por isso o `.env.example` existe como referência.
+
 | Comando | Pra que serve |
 |---|---|
 | `npm install` | Instala as dependências listadas no `package.json` (só precisa rodar de novo se o `package.json` mudar). |
 | `npm run dev` | Sobe o servidor de desenvolvimento do Vite com hot-reload. |
 | `npm run build` | Gera o build de produção (TypeScript é checado nesse passo). |
-| `npm run test` | Roda os testes (Vitest) — será adicionado quando começarmos a validação do boleto. |
+| `npm run test` | Roda os testes (Vitest) — cobre validação de boleto (mod10/mod11/boletoValidator), hooks (`useBoletoValidation`, `useBoletoPreview`) e componentes (`BoletoInput`). |
 
 ## Problemas conhecidos
 
