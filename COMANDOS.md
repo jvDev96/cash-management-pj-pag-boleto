@@ -36,6 +36,27 @@ Usamos prefixos (`tipo: descrição`) pra cada commit contar a história do proj
 
 RabbitMQ tem uma UI web em **http://localhost:15672** (login `boleto_saga` / `boleto_saga`) —
 dá pra ver filas, mensagens presas e a dead-letter queue visualmente, sem digitar nada.
+Como o processamento é rápido (segundos), a profundidade da fila costuma voltar a zero
+antes de você olhar — pra ver atividade de verdade, usa o gráfico de "Message rates"
+(janela de tempo, mostra o pico mesmo depois de esvaziar) em vez da contagem instantânea.
+
+**Postgres não tem UI web** — usa `psql` dentro do próprio container. Passar
+a query direto com `-c` (em vez de entrar no modo interativo) evita problema
+de colar texto multi-linha no REPL e quebrar o buffer (`boleto_saga-#` em vez
+de `boleto_saga=#` — psql "esperando" um `;` que nunca chegou):
+```powershell
+docker exec -it boleto-saga-postgres psql -U boleto_saga -d boleto_saga -c "SELECT * FROM saga ORDER BY criado_em DESC;"
+docker exec -it boleto-saga-postgres psql -U boleto_saga -d boleto_saga -c "SELECT * FROM saga_transicao ORDER BY timestamp;"
+```
+Pra explorar interativamente (`\dt` lista tabelas, `\q` sai), roda sem `-c`:
+```powershell
+docker exec -it boleto-saga-postgres psql -U boleto_saga -d boleto_saga
+```
+Se o prompt virar `boleto_saga-#` (esperando mais texto), digita só `;` e
+Enter pra descartar o que ficou pendurado e voltar ao prompt limpo.
+Pra interface visual (melhor pro vídeo), qualquer cliente Postgres genérico
+(DBeaver, extensão PostgreSQL do VS Code) conecta em `localhost:5432` com as
+mesmas credenciais (`boleto_saga`/`boleto_saga`/`boleto_saga`).
 
 ## Backend (pasta `backend/`, Java + Maven)
 
