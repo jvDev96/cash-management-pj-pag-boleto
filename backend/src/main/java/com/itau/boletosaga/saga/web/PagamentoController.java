@@ -3,6 +3,10 @@ package com.itau.boletosaga.saga.web;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,6 +51,15 @@ public class PagamentoController {
 
         HttpStatus status = resultado.novaSaga() ? HttpStatus.ACCEPTED : HttpStatus.OK;
         return ResponseEntity.status(status).body(montarResposta(resultado.saga()));
+    }
+
+    // DECISAO: Page<T> do Spring Data direto, sem DTO de envelope proprio.
+    // PORQUE: Page ja serializa com content/totalElements/totalPages/number -
+    // exatamente o que a paginacao do front precisa, sem reinventar o formato.
+    @GetMapping
+    public Page<PagamentoResumoResponse> listar(
+            @PageableDefault(size = 10, sort = "atualizadoEm", direction = Sort.Direction.DESC) Pageable pageable) {
+        return sagaRepository.findAll(pageable).map(PagamentoResumoResponse::de);
     }
 
     @GetMapping("/{sagaId}")
