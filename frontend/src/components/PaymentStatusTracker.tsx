@@ -1,6 +1,7 @@
 import { montarTimeline } from "../timeline/montarTimeline";
 import type { StatusLinha } from "../timeline/montarTimeline";
 import type { HistoricoEntry, SagaState } from "../hooks/usePaymentSaga";
+import styles from "./PaymentStatusTracker.module.scss";
 
 type PaymentStatusTrackerProps = {
   estado: SagaState | null;
@@ -21,26 +22,32 @@ export function PaymentStatusTracker({ estado, historico, protocolo, motivoFalha
   }
 
   return (
-    <div>
-      <h2>Acompanhamento do Pagamento</h2>
-      <p>Atualizado em tempo real</p>
-      <ol>
+    <div className={styles.container}>
+      <h2 className={styles.titulo}>Acompanhamento do Pagamento</h2>
+      <p className={styles.subtitulo}>Atualizado em tempo real</p>
+      <ol className={styles.lista}>
         {linhas.map((linha) => (
-          <li key={linha.id}>
-            <span aria-hidden="true">{iconePorStatus(linha.status)}</span>
-            <strong>{linha.titulo}</strong>
-            <p>{linha.descricao}</p>
-            {linha.status === "processando" && <p>Processando...</p>}
-            {linha.timestamp && <time>{formatarHorario(linha.timestamp)}</time>}
-            {linha.motivoFalha && (
-              <div role="alert">
-                <strong>MOTIVO DA FALHA</strong>
-                <p>{linha.motivoFalha}</p>
+          <li key={linha.id} className={styles.item}>
+            <span aria-hidden="true" className={`${styles.icone} ${classePorStatus(linha.status)}`}>
+              {iconePorStatus(linha.status)}
+            </span>
+            <div className={styles.corpo}>
+              <div className={styles.linhaTitulo}>
+                <strong className={styles.tituloEtapa}>{linha.titulo}</strong>
+                {linha.timestamp && <time className={styles.horario}>{formatarHorario(linha.timestamp)}</time>}
               </div>
-            )}
-            {linha.id === "RESULTADO" && linha.status === "concluido" && protocolo && (
-              <p>Protocolo: {protocolo}</p>
-            )}
+              <p className={styles.descricao}>{linha.descricao}</p>
+              {linha.status === "processando" && <p className={styles.processando}>Processando...</p>}
+              {linha.motivoFalha && (
+                <div role="alert" className={styles.alerta}>
+                  <strong className={styles.alertaTitulo}>MOTIVO DA FALHA</strong>
+                  <p className={styles.alertaTexto}>{linha.motivoFalha}</p>
+                </div>
+              )}
+              {linha.id === "RESULTADO" && linha.status === "concluido" && protocolo && (
+                <p className={styles.protocolo}>Protocolo: {protocolo}</p>
+              )}
+            </div>
           </li>
         ))}
       </ol>
@@ -61,6 +68,19 @@ function iconePorStatus(status: StatusLinha): string {
       return "✕";
     case "pendente":
       return "○";
+  }
+}
+
+function classePorStatus(status: StatusLinha): string {
+  switch (status) {
+    case "concluido":
+      return styles.iconeConcluido;
+    case "processando":
+      return styles.iconeProcessando;
+    case "falhou":
+      return styles.iconeFalhou;
+    case "pendente":
+      return "";
   }
 }
 

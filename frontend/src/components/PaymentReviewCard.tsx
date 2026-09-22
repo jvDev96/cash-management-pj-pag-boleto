@@ -1,4 +1,5 @@
 import type { BoletoPreview } from "../hooks/useBoletoPreview";
+import styles from "./PaymentReviewCard.module.scss";
 
 type PaymentReviewCardProps = {
   preview: BoletoPreview;
@@ -8,22 +9,25 @@ type PaymentReviewCardProps = {
 
 export function PaymentReviewCard({ preview, aoConfirmar, enviando }: PaymentReviewCardProps) {
   return (
-    <div>
-      <h2>Revisão do Pagamento</h2>
-      <dl>
-        <dt>Beneficiário</dt>
-        <dd>{preview.beneficiario}</dd>
-        <dt>Valor</dt>
-        <dd>{formatarValor(preview.valor)}</dd>
-        <dt>Vencimento</dt>
-        <dd>{preview.vencimento && formatarData(preview.vencimento)}</dd>
-        <dt>Tipo</dt>
-        <dd>{preview.tipo}</dd>
-        <dt>Banco</dt>
-        <dd>{preview.banco}</dd>
+    <div className={styles.card}>
+      <h2 className={styles.titulo}>Revisão do Pagamento</h2>
+      <dl className={styles.lista}>
+        <dt className={styles.rotulo}>Beneficiário</dt>
+        <dd className={styles.valorCampo}>{preview.beneficiario}</dd>
+        <dt className={styles.rotulo}>Valor</dt>
+        <dd className={styles.valorCampo}>{formatarValor(preview.valor)}</dd>
+        <dt className={styles.rotulo}>Vencimento</dt>
+        <dd className={styles.valorCampo}>{preview.vencimento && formatarData(preview.vencimento)}</dd>
+        <dt className={styles.rotulo}>Tipo</dt>
+        <dd className={styles.valorCampo}>{preview.tipo}</dd>
+        <dt className={styles.rotulo}>Banco</dt>
+        <dd className={styles.valorCampo}>{preview.banco}</dd>
       </dl>
-      <p>Total a debitar: {formatarValor(preview.valor)}</p>
-      <button type="button" onClick={aoConfirmar} disabled={enviando}>
+      <p className={styles.total}>
+        <span>Total a debitar</span>
+        <span>{formatarValor(preview.valor)}</span>
+      </p>
+      <button type="button" className={styles.botao} onClick={aoConfirmar} disabled={enviando}>
         Confirmar Pagamento
       </button>
     </div>

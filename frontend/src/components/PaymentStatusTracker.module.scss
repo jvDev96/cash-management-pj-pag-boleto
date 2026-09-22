@@ -1,0 +1,133 @@
+.container {
+  padding: var(--espaco-lg);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-borda);
+  background-color: var(--cor-branco);
+  border-top: 4px solid var(--cor-secundaria);
+  max-width: 480px;
+}
+
+.titulo {
+  margin: 0;
+}
+
+.subtitulo {
+  margin: 0 0 var(--espaco-lg);
+  color: var(--cor-texto-secundario);
+  font-size: 14px;
+}
+
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  display: flex;
+  gap: var(--espaco-md);
+  padding-bottom: var(--espaco-lg);
+  position: relative;
+
+  &:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    left: 15px;
+    top: 32px;
+    bottom: 0;
+    width: 2px;
+    background-color: var(--cor-borda);
+  }
+}
+
+.icone {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  background-color: var(--cor-borda);
+  color: var(--cor-texto-secundario);
+  position: relative;
+  z-index: 1;
+}
+
+.iconeConcluido {
+  background-color: var(--cor-sucesso);
+  color: var(--cor-branco);
+}
+
+.iconeProcessando {
+  background-color: var(--cor-processando);
+  color: var(--cor-branco);
+}
+
+.iconeFalhou {
+  background-color: var(--cor-erro);
+  color: var(--cor-branco);
+}
+
+.corpo {
+  flex: 1;
+  min-width: 0;
+}
+
+.linhaTitulo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--espaco-sm);
+}
+
+.tituloEtapa {
+  margin: 0;
+  font-size: 15px;
+}
+
+.horario {
+  color: var(--cor-texto-secundario);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.descricao {
+  margin: 2px 0 0;
+  color: var(--cor-texto-secundario);
+  font-size: 14px;
+}
+
+.processando {
+  margin: var(--espaco-xs) 0 0;
+  color: var(--cor-processando);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.alerta {
+  margin-top: var(--espaco-sm);
+  padding: var(--espaco-sm) var(--espaco-md);
+  background-color: var(--cor-erro-fundo);
+  border-radius: var(--raio-borda);
+}
+
+.alertaTitulo {
+  display: block;
+  color: var(--cor-erro);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.alertaTexto {
+  margin: 0;
+  font-size: 14px;
+}
+
+.protocolo {
+  margin: var(--espaco-xs) 0 0;
+  color: var(--cor-texto-secundario);
+  font-size: 14px;
+}

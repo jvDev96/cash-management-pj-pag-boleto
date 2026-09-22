@@ -1,0 +1,49 @@
+.titulo {
+  margin: 0 0 var(--espaco-xs);
+}
+
+.subtitulo {
+  margin: 0 0 var(--espaco-xl);
+  color: var(--cor-texto-secundario);
+}
+
+.nav {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--espaco-md);
+  max-width: 720px;
+}
+
+.card {
+  display: block;
+  padding: var(--espaco-lg);
+  border-radius: var(--raio-borda);
+  text-decoration: none;
+  transition: transform 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.cardPrimario {
+  background-color: var(--cor-primaria);
+  color: var(--cor-branco);
+}
+
+.cardSecundario {
+  background-color: var(--cor-branco);
+  border: 1px solid var(--cor-borda);
+  color: var(--cor-texto);
+}
+
+.cardTitulo {
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+
+.cardDescricao {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.85;
+}

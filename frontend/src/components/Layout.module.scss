@@ -1,0 +1,93 @@
+.pagina {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--cor-fundo);
+}
+
+.cabecalho {
+  // DECISAO: position fixed, nao sticky.
+  // PORQUE: fixed tira o header do fluxo normal do documento - precisa que
+  // o .conteudo reserve o espaco equivalente via padding-top, mas garante
+  // que a navbar nunca "empurra" ou e empurrada por nada abaixo dela.
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  height: var(--altura-cabecalho);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--espaco-xl);
+  background-color: var(--cor-secundaria);
+  color: var(--cor-branco);
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: var(--espaco-sm);
+  font-size: 15px;
+}
+
+.logo {
+  color: var(--cor-branco);
+  font-weight: 700;
+  font-size: 18px;
+  text-decoration: none;
+}
+
+.separador {
+  opacity: 0.4;
+}
+
+.tagPj {
+  border: 1px solid var(--cor-primaria);
+  color: var(--cor-primaria);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.usuario {
+  display: flex;
+  align-items: center;
+  gap: var(--espaco-sm);
+  font-size: 14px;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.conteudo {
+  flex: 1;
+  padding: var(--espaco-xl);
+  padding-top: calc(var(--altura-cabecalho) + var(--espaco-xl));
+}
+
+.rodape {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--espaco-md) var(--espaco-xl);
+  border-top: 1px solid var(--cor-borda);
+  background-color: var(--cor-branco);
+  color: var(--cor-texto-secundario);
+  font-size: 13px;
+}
+
+.seguranca {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

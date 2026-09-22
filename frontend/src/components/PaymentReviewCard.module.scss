@@ -1,0 +1,62 @@
+.card {
+  margin-top: var(--espaco-lg);
+  padding: var(--espaco-lg);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-borda);
+  background-color: var(--cor-branco);
+  border-top: 4px solid var(--cor-primaria);
+}
+
+.titulo {
+  margin: 0 0 var(--espaco-md);
+}
+
+.lista {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  row-gap: var(--espaco-sm);
+  column-gap: var(--espaco-lg);
+  margin: 0;
+}
+
+.rotulo {
+  color: var(--cor-texto-secundario);
+  font-size: 14px;
+}
+
+.valorCampo {
+  margin: 0;
+  text-align: right;
+  font-weight: 600;
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  margin: var(--espaco-lg) 0;
+  padding-top: var(--espaco-md);
+  border-top: 1px solid var(--cor-borda);
+  font-weight: 700;
+}
+
+.botao {
+  width: 100%;
+  padding: var(--espaco-md);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--cor-branco);
+  background-color: var(--cor-primaria);
+  border: none;
+  border-radius: var(--raio-borda);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background-color: var(--cor-primaria-hover);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
