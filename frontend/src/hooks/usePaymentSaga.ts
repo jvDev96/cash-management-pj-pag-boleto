@@ -11,7 +11,7 @@ export type SagaState =
   | "REJEITADO"
   | "FALHOU";
 
-  export type HistoricoEntry = {
+export type HistoricoEntry = {
   estado: SagaState;
   timestamp: string;
 };
@@ -26,6 +26,7 @@ type PagamentoResponse = {
 };
 
 const ESTADOS_TERMINAIS: SagaState[] = ["CONCLUIDO", "REJEITADO", "FALHOU"];
+const ESTADOS_FALHA: SagaState[] = ["REJEITADO", "FALHOU"];
 const INTERVALO_POLLING_MS = 1500;
 
 export function usePaymentSaga() {
@@ -41,6 +42,12 @@ export function usePaymentSaga() {
   const [erro, setErro] = useState(false);
   const [historico, setHistorico] = useState<HistoricoEntry[]>([]);
   const [protocolo, setProtocolo] = useState<string | null>(null);
+
+  // DECISAO: falhou e derivado aqui, nao recalculado na UI.
+  // PORQUE: "quais estados sao falha terminal" e conhecimento de dominio -
+  // mora perto do SagaState, nao duplicado em cada componente que precisa
+  // decidir se mostra o botao "Tentar Novamente".
+  const falhou = estado !== null && ESTADOS_FALHA.includes(estado);
 
   const enviarPagamento = (linhaDigitavel: string, valor: number) => {
     setEnviando(true);
@@ -67,6 +74,22 @@ export function usePaymentSaga() {
         setErro(true);
         setEnviando(false);
       });
+  };
+
+  // DECISAO: reiniciar troca a idempotency key, nao reusa a antiga.
+  // PORQUE: a saga anterior terminou num estado terminal (REJEITADO/FALHOU),
+  // sem transicao de volta - reenviar com a MESMA chave so devolveria a
+  // saga morta de novo (idempotencia == mesma decisao pra sempre). "Tentar
+  // Novamente" e uma tentativa NOVA e deliberada (o clique), nao um reenvio
+  // acidental - por isso merece chave propria.
+  const reiniciar = () => {
+    idempotencyKeyRef.current = crypto.randomUUID();
+    setSagaId(null);
+    setEstado(null);
+    setMotivoFalha(null);
+    setErro(false);
+    setHistorico([]);
+    setProtocolo(null);
   };
 
   useEffect(() => {
@@ -100,5 +123,16 @@ export function usePaymentSaga() {
     };
   }, [sagaId]);
 
-  return { sagaId, estado, motivoFalha, enviando, erro, historico, protocolo, enviarPagamento };
+  return {
+    sagaId,
+    estado,
+    motivoFalha,
+    enviando,
+    erro,
+    historico,
+    protocolo,
+    falhou,
+    enviarPagamento,
+    reiniciar,
+  };
 }

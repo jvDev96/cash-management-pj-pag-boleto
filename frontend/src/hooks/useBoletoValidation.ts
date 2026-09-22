@@ -14,5 +14,9 @@ export function useBoletoValidation() {
 
   const resultado = validarLinhaDigitavel(linhaDigitavel);
 
-  return { linhaDigitavel, alterarLinhaDigitavel, resultado };
+  const limpar = () => {
+    setLinhaDigitavel("");
+  };
+
+  return { linhaDigitavel, alterarLinhaDigitavel, resultado, limpar };
 }

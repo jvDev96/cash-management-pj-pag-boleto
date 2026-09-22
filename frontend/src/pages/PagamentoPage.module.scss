@@ -1,0 +1,67 @@
+.pagina {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.titulo {
+  margin: 0 0 var(--espaco-xs);
+}
+
+.subtitulo {
+  margin: 0 0 var(--espaco-xl);
+  color: var(--cor-texto-secundario);
+}
+
+.card {
+  padding: var(--espaco-lg);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-borda);
+  background-color: var(--cor-branco);
+}
+
+.botaoVoltar {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: var(--espaco-md);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--cor-texto-secundario);
+  font-size: 14px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--cor-secundaria);
+  }
+}
+
+%botaoLargo {
+  width: 100%;
+  margin-top: var(--espaco-lg);
+  padding: var(--espaco-md);
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  border-radius: var(--raio-borda);
+  cursor: pointer;
+}
+
+.botaoTentarNovamente {
+  @extend %botaoLargo;
+  color: var(--cor-branco);
+  background-color: var(--cor-erro);
+
+  &:hover {
+    opacity: 0.9;
+  }
+}
+
+.botaoNovoPagamento {
+  @extend %botaoLargo;
+  color: var(--cor-branco);
+  background-color: var(--cor-primaria);
+
+  &:hover {
+    background-color: var(--cor-primaria-hover);
+  }
+}
