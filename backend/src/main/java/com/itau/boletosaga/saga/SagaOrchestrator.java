@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,10 +36,13 @@ public class SagaOrchestrator {
     private static final Logger log = LoggerFactory.getLogger(SagaOrchestrator.class);
 
     private final SagaRepository sagaRepository;
+    private final SagaTransicaoRepository sagaTransicaoRepository;
     private final RabbitTemplate rabbitTemplate;
 
-    public SagaOrchestrator(SagaRepository sagaRepository, RabbitTemplate rabbitTemplate) {
+    public SagaOrchestrator(SagaRepository sagaRepository, SagaTransicaoRepository sagaTransicaoRepository,
+                             RabbitTemplate rabbitTemplate) {
         this.sagaRepository = sagaRepository;
+        this.sagaTransicaoRepository = sagaTransicaoRepository;
         this.rabbitTemplate = rabbitTemplate;
     }
 
@@ -78,10 +82,32 @@ public class SagaOrchestrator {
 
     private Saga criarNovaSaga(String idempotencyKey, String linhaDigitavel, BigDecimal valor) {
         Saga saga = new Saga(idempotencyKey, linhaDigitavel, valor);
-        sagaRepository.save(saga);
+        salvarComHistorico(saga);
         rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.CMD_VALIDAR_BOLETO,
                 new ValidarBoletoCommand(saga.getId(), linhaDigitavel));
         return saga;
+    }
+
+    // DECISAO: helper unico que sempre salva a saga E registra a transicao no
+    // historico, junto.
+    // PORQUE: evita esquecer de logar em algum dos varios pontos que mudam
+    // estado - o historico existe especificamente pra alimentar a timeline do
+    // front (timestamp por etapa, e qual etapa estava em andamento quando a
+    // saga falhou), entao toda gravacao de saga precisa gerar uma linha.
+    private void salvarComHistorico(Saga saga) {
+        sagaRepository.save(saga);
+        registrarTransicao(saga);
+    }
+
+    // DECISAO: separado de salvarComHistorico() especificamente pro caso da
+    // dupla transicao (SALDO_RESERVADO -> LIQUIDACAO_ENVIADA) em
+    // aoReservarSaldo, onde so existe UM save da saga (de proposito, pra nao
+    // reabrir a janela de corrida ja corrigida antes), mas a timeline do
+    // front precisa das DUAS linhas de historico mesmo assim.
+    // PORQUE: nao salva a saga de novo aqui - so registra que ela passou por
+    // esse estado, no instante em que passou.
+    private void registrarTransicao(Saga saga) {
+        sagaTransicaoRepository.save(new SagaTransicao(saga.getId(), saga.getEstado(), Instant.now()));
     }
 
     @RabbitListener(queues = SagaMessagingConfig.EVT_BOLETO_VALIDADO)
@@ -93,13 +119,13 @@ public class SagaOrchestrator {
                 if (evento.sucesso()) {
                     saga.preencherDadosConsultados(evento.beneficiario(), evento.vencimento());
                     saga.transicionarPara(SagaState.VALIDADO);
-                    sagaRepository.save(saga);
+                    salvarComHistorico(saga);
                     rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.CMD_RESERVAR_SALDO,
                             new ReservarSaldoCommand(saga.getId(), saga.getValor()));
                 } else {
                     saga.registrarFalha(evento.motivoFalha());
                     saga.transicionarPara(SagaState.REJEITADO);
-                    sagaRepository.save(saga);
+                    salvarComHistorico(saga);
                 }
             }
             channel.basicAck(deliveryTag, false);
@@ -136,14 +162,15 @@ public class SagaOrchestrator {
                     // sabe resolver reenviando o comando (nada externo
                     // aconteceu ainda nesse caso).
                     saga.transicionarPara(SagaState.SALDO_RESERVADO);
+                    registrarTransicao(saga);
                     saga.transicionarPara(SagaState.LIQUIDACAO_ENVIADA);
-                    sagaRepository.save(saga);
+                    salvarComHistorico(saga);
                     rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.CMD_ENVIAR_LIQUIDACAO,
                             new EnviarLiquidacaoCommand(saga.getId(), saga.getValor()));
                 } else {
                     saga.registrarFalha(evento.motivoFalha());
                     saga.transicionarPara(SagaState.REJEITADO);
-                    sagaRepository.save(saga);
+                    salvarComHistorico(saga);
                 }
             }
             channel.basicAck(deliveryTag, false);
@@ -161,11 +188,11 @@ public class SagaOrchestrator {
             if (podeProcessar(evento.sagaId(), saga, SagaState.LIQUIDACAO_ENVIADA)) {
                 if (evento.sucesso()) {
                     saga.transicionarPara(SagaState.CONCLUIDO);
-                    sagaRepository.save(saga);
+                    salvarComHistorico(saga);
                 } else {
                     saga.registrarFalha(evento.motivoFalha());
                     saga.transicionarPara(SagaState.SALDO_LIBERADO);
-                    sagaRepository.save(saga);
+                    salvarComHistorico(saga);
                     rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.CMD_COMPENSAR_RESERVA,
                             new CompensarReservaCommand(saga.getId()));
                 }
@@ -184,7 +211,7 @@ public class SagaOrchestrator {
             Saga saga = buscar(evento.sagaId());
             if (podeProcessar(evento.sagaId(), saga, SagaState.SALDO_LIBERADO)) {
                 saga.transicionarPara(SagaState.FALHOU);
-                sagaRepository.save(saga);
+                salvarComHistorico(saga);
             }
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {

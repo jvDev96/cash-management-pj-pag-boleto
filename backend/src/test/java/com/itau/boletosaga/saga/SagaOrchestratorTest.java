@@ -7,6 +7,7 @@ import com.rabbitmq.client.Channel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -15,6 +16,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -53,6 +55,9 @@ class SagaOrchestratorTest {
     private SagaRepository sagaRepository;
 
     @Mock
+    private SagaTransicaoRepository sagaTransicaoRepository;
+
+    @Mock
     private RabbitTemplate rabbitTemplate;
 
     @Mock
@@ -62,7 +67,7 @@ class SagaOrchestratorTest {
 
     @BeforeEach
     void setUp() {
-        orchestrator = new SagaOrchestrator(sagaRepository, rabbitTemplate);
+        orchestrator = new SagaOrchestrator(sagaRepository, sagaTransicaoRepository, rabbitTemplate);
     }
 
     @Test
@@ -76,6 +81,22 @@ class SagaOrchestratorTest {
         verify(sagaRepository).save(any(Saga.class));
         verify(rabbitTemplate).convertAndSend(eq(SagaMessagingConfig.EXCHANGE),
                 eq(SagaMessagingConfig.CMD_VALIDAR_BOLETO), (Object) any());
+    }
+
+    // DECISAO: prova formal de que criar uma saga nova ja grava a primeira
+    // linha do historico (RECEBIDO) - sem isso a timeline nao teria
+    // timestamp pra essa etapa.
+    @Test
+    void iniciarCriaSagaERegistraTransicaoRecebidoNoHistorico() {
+        when(sagaRepository.findByIdempotencyKey("chave-1")).thenReturn(Optional.empty());
+
+        SagaOrchestrator.ResultadoIniciarSaga resultado =
+                orchestrator.iniciar("chave-1", "34191790010104351004791020150008", new BigDecimal("100.00"));
+
+        ArgumentCaptor<SagaTransicao> captor = ArgumentCaptor.forClass(SagaTransicao.class);
+        verify(sagaTransicaoRepository).save(captor.capture());
+        assertEquals(SagaState.RECEBIDO, captor.getValue().getEstado());
+        assertEquals(resultado.saga().getId(), captor.getValue().getSagaId());
     }
 
     @Test
@@ -104,6 +125,19 @@ class SagaOrchestratorTest {
         verify(rabbitTemplate).convertAndSend(eq(SagaMessagingConfig.EXCHANGE),
                 eq(SagaMessagingConfig.CMD_RESERVAR_SALDO), (Object) any());
         verify(channel).basicAck(1L, false);
+    }
+
+    @Test
+    void aoValidarBoletoComSucessoRegistraTransicaoValidadoNoHistorico() throws IOException {
+        Saga saga = new Saga("chave-1", "34191790010104351004791020150008", new BigDecimal("100.00"));
+        when(sagaRepository.findById(saga.getId())).thenReturn(Optional.of(saga));
+
+        BoletoValidadoEvent evento = BoletoValidadoEvent.sucesso(saga.getId(), "Fulano LTDA", LocalDate.now().plusDays(3));
+        orchestrator.aoValidarBoleto(evento, channel, 1L);
+
+        ArgumentCaptor<SagaTransicao> captor = ArgumentCaptor.forClass(SagaTransicao.class);
+        verify(sagaTransicaoRepository).save(captor.capture());
+        assertEquals(SagaState.VALIDADO, captor.getValue().getEstado());
     }
 
     @Test
@@ -170,5 +204,28 @@ class SagaOrchestratorTest {
         ordem.verify(sagaRepository).save(saga);
         ordem.verify(rabbitTemplate).convertAndSend(eq(SagaMessagingConfig.EXCHANGE),
                 eq(SagaMessagingConfig.CMD_ENVIAR_LIQUIDACAO), (Object) any());
+    }
+
+    // DECISAO: prova formal de que o historico ganha as DUAS linhas
+    // (SALDO_RESERVADO e LIQUIDACAO_ENVIADA) mesmo com um unico save da saga -
+    // exatamente a separacao salvarComHistorico/registrarTransicao
+    // documentada no CONCEITOS.md, pra nao reabrir a janela de corrida do
+    // bug save-antes-do-publish.
+    @Test
+    void aoReservarSaldoComSucessoRegistraAsDuasTransicoesNoHistoricoComUmUnicoSaveDaSaga() throws IOException {
+        Saga saga = new Saga("chave-1", "34191790010104351004791020150008", new BigDecimal("100.00"));
+        saga.transicionarPara(SagaState.VALIDADO);
+        when(sagaRepository.findById(saga.getId())).thenReturn(Optional.of(saga));
+
+        SaldoReservadoEvent evento = SaldoReservadoEvent.sucesso(saga.getId());
+        orchestrator.aoReservarSaldo(evento, channel, 1L);
+
+        verify(sagaRepository, times(1)).save(saga);
+
+        ArgumentCaptor<SagaTransicao> captor = ArgumentCaptor.forClass(SagaTransicao.class);
+        verify(sagaTransicaoRepository, times(2)).save(captor.capture());
+
+        List<SagaState> estadosRegistrados = captor.getAllValues().stream().map(SagaTransicao::getEstado).toList();
+        assertEquals(List.of(SagaState.SALDO_RESERVADO, SagaState.LIQUIDACAO_ENVIADA), estadosRegistrados);
     }
 }

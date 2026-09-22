@@ -1,5 +1,6 @@
 package com.itau.boletosaga.saga.web;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -12,8 +13,11 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.itau.boletosaga.saga.Saga;
 import com.itau.boletosaga.saga.SagaOrchestrator;
 import com.itau.boletosaga.saga.SagaRepository;
+import com.itau.boletosaga.saga.SagaTransicao;
+import com.itau.boletosaga.saga.SagaTransicaoRepository;
 
 @RestController
 @RequestMapping("/pagamentos")
@@ -21,10 +25,13 @@ public class PagamentoController {
 
     private final SagaOrchestrator sagaOrchestrator;
     private final SagaRepository sagaRepository;
+    private final SagaTransicaoRepository sagaTransicaoRepository;
 
-    public PagamentoController(SagaOrchestrator sagaOrchestrator, SagaRepository sagaRepository) {
+    public PagamentoController(SagaOrchestrator sagaOrchestrator, SagaRepository sagaRepository,
+                                SagaTransicaoRepository sagaTransicaoRepository) {
         this.sagaOrchestrator = sagaOrchestrator;
         this.sagaRepository = sagaRepository;
+        this.sagaTransicaoRepository = sagaTransicaoRepository;
     }
 
     // DECISAO: 202 (Accepted) quando cria de verdade, 200 (OK) quando so
@@ -39,13 +46,18 @@ public class PagamentoController {
                 idempotencyKey, request.linhaDigitavel(), request.valor());
 
         HttpStatus status = resultado.novaSaga() ? HttpStatus.ACCEPTED : HttpStatus.OK;
-        return ResponseEntity.status(status).body(PagamentoResponse.de(resultado.saga()));
+        return ResponseEntity.status(status).body(montarResposta(resultado.saga()));
     }
 
     @GetMapping("/{sagaId}")
     public ResponseEntity<PagamentoResponse> consultarStatus(@PathVariable UUID sagaId) {
         return sagaRepository.findById(sagaId)
-                .map(saga -> ResponseEntity.ok(PagamentoResponse.de(saga)))
+                .map(saga -> ResponseEntity.ok(montarResposta(saga)))
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    private PagamentoResponse montarResposta(Saga saga) {
+        List<SagaTransicao> historico = sagaTransicaoRepository.findBySagaIdOrderByTimestampAsc(saga.getId());
+        return PagamentoResponse.de(saga, historico);
     }
 }

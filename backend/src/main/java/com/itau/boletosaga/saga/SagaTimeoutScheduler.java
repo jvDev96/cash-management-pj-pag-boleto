@@ -30,12 +30,15 @@ public class SagaTimeoutScheduler {
     );
 
     private final SagaRepository sagaRepository;
+    private final SagaTransicaoRepository sagaTransicaoRepository;
     private final RabbitTemplate rabbitTemplate;
     private final long timeoutSegundos;
 
-    public SagaTimeoutScheduler(SagaRepository sagaRepository, RabbitTemplate rabbitTemplate,
+    public SagaTimeoutScheduler(SagaRepository sagaRepository, SagaTransicaoRepository sagaTransicaoRepository,
+                                 RabbitTemplate rabbitTemplate,
                                  @Value("${saga.timeout.segundos:30}") long timeoutSegundos) {
         this.sagaRepository = sagaRepository;
+        this.sagaTransicaoRepository = sagaTransicaoRepository;
         this.rabbitTemplate = rabbitTemplate;
         this.timeoutSegundos = timeoutSegundos;
     }
@@ -72,20 +75,25 @@ public class SagaTimeoutScheduler {
             case RECEBIDO, VALIDADO -> {
                 saga.registrarFalha("Timeout aguardando resposta na etapa " + estadoOriginal);
                 saga.transicionarPara(SagaState.REJEITADO);
-                sagaRepository.save(saga);
+                salvarComHistorico(saga);
             }
             case LIQUIDACAO_ENVIADA -> {
                 saga.registrarFalha("Timeout aguardando confirmacao da liquidacao");
                 saga.transicionarPara(SagaState.SALDO_LIBERADO);
-                sagaRepository.save(saga);
+                salvarComHistorico(saga);
                 rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.CMD_COMPENSAR_RESERVA,
                         new CompensarReservaCommand(saga.getId()));
             }
             case SALDO_LIBERADO -> {
                 saga.transicionarPara(SagaState.FALHOU);
-                sagaRepository.save(saga);
+                salvarComHistorico(saga);
             }
             default -> log.warn("Timeout monitorando um estado inesperado: {}", estadoOriginal);
         }
+    }
+
+    private void salvarComHistorico(Saga saga) {
+        sagaRepository.save(saga);
+        sagaTransicaoRepository.save(new SagaTransicao(saga.getId(), saga.getEstado(), Instant.now()));
     }
 }
