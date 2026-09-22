@@ -29,16 +29,29 @@
   <rect x="10" y="206" width="230" height="34" rx="6" class="box"/>
   <text x="125" y="228" text-anchor="middle" style="font-size:11px">saga.evt.boleto-validado</text>
 
-  <rect x="270" y="40" width="230" height="34" rx="6" class="box"/>
-  <text x="385" y="62" text-anchor="middle" style="font-size:10px">saga.cmd.reservar-saldo</text>
-  <line x1="385" y1="74" x2="385" y2="110" class="path" marker-end="url(#mm)"/>
+  <rect x="270" y="40" width="105" height="34" rx="6" class="box"/>
+  <text x="322" y="55" text-anchor="middle" style="font-size:7.5px">saga.cmd.</text>
+  <text x="322" y="66" text-anchor="middle" style="font-size:7.5px">reservar-saldo</text>
+  <line x1="322" y1="74" x2="322" y2="110" class="path" marker-end="url(#mm)"/>
+
+  <rect x="395" y="40" width="105" height="34" rx="6" class="box"/>
+  <text x="447" y="55" text-anchor="middle" style="font-size:7.5px">saga.cmd.</text>
+  <text x="447" y="66" text-anchor="middle" style="font-size:7.5px">compensar-reserva</text>
+  <line x1="447" y1="74" x2="447" y2="110" class="path" marker-end="url(#mm)"/>
+
   <rect x="270" y="114" width="230" height="52" rx="8" class="box"/>
   <text x="385" y="136" text-anchor="middle" class="lbl" style="font-size:12px">Conta / Saldo</text>
   <text x="385" y="152" text-anchor="middle" class="cap">≥R$700 = insuficiente</text>
-  <line x1="385" y1="166" x2="385" y2="202" class="path" marker-end="url(#mm)"/>
-  <rect x="270" y="206" width="230" height="34" rx="6" class="box"/>
-  <text x="385" y="228" text-anchor="middle" style="font-size:10.5px">saga.evt.saldo-reservado</text>
-  <text x="270" y="8" class="cap" style="font-size:9.5px">também escuta: saga.cmd.compensar-reserva → publica saga.evt.saldo-liberado</text>
+
+  <line x1="322" y1="166" x2="322" y2="202" class="path" marker-end="url(#mm)"/>
+  <rect x="270" y="206" width="105" height="34" rx="6" class="box"/>
+  <text x="322" y="221" text-anchor="middle" style="font-size:7.5px">saga.evt.</text>
+  <text x="322" y="232" text-anchor="middle" style="font-size:7.5px">saldo-reservado</text>
+
+  <line x1="447" y1="166" x2="447" y2="202" class="path" marker-end="url(#mm)"/>
+  <rect x="395" y="206" width="105" height="34" rx="6" class="box"/>
+  <text x="447" y="221" text-anchor="middle" style="font-size:7.5px">saga.evt.</text>
+  <text x="447" y="232" text-anchor="middle" style="font-size:7.5px">saldo-liberado</text>
 
   <rect x="530" y="40" width="230" height="34" rx="6" class="box"/>
   <text x="645" y="62" text-anchor="middle" style="font-size:10px">saga.cmd.enviar-liquidacao</text>
