@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 300" role="img" aria-label="Tres servicos simulados (Validacao de Boleto, Conta e Saldo, Liquidacao), cada um escutando uma ou duas filas de comando e publicando na fila de evento correspondente, todos conectados a uma dead letter queue compartilhada.">
+  <style>
+    text{font-family:'IBM Plex Mono','Courier New',monospace;fill:#211D16;}
+    .box{fill:#EAE3D0;stroke:#D7CDB2;stroke-width:1.5;}
+    .box-bad{fill:#F3DFD9;stroke:#AC3A2A;stroke-width:1.5;}
+    .lbl{font-size:12.5px;font-weight:600;}
+    .lbl-bad{fill:#AC3A2A;}
+    .path{stroke:#211D16;fill:none;}
+    .path-bad{stroke:#AC3A2A;fill:none;}
+    .cap{fill:#6E6656;font-size:10.5px;font-family:'IBM Plex Sans',Arial,sans-serif;}
+    .lane{fill:#6E6656;font-size:11px;letter-spacing:.06em;font-family:'IBM Plex Sans',Arial,sans-serif;}
+  </style>
+  <rect width="1000" height="300" fill="#F2EEE2"/>
+  <defs>
+    <marker id="mm" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#211D16"/></marker>
+    <marker id="mb2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#AC3A2A"/></marker>
+  </defs>
+
+  <text x="10" y="22" class="lane">COMANDO (Orchestrator publica)</text>
+  <text x="10" y="270" class="lane">EVENTO (serviço publica de volta)</text>
+
+  <rect x="10" y="40" width="230" height="34" rx="6" class="box"/>
+  <text x="125" y="62" text-anchor="middle" style="font-size:11px">saga.cmd.validar-boleto</text>
+  <line x1="125" y1="74" x2="125" y2="110" class="path" marker-end="url(#mm)"/>
+  <rect x="10" y="114" width="230" height="52" rx="8" class="box"/>
+  <text x="125" y="136" text-anchor="middle" class="lbl" style="font-size:12px">Validação Boleto</text>
+  <text x="125" y="152" text-anchor="middle" class="cap">termina em "0000" = falha</text>
+  <line x1="125" y1="166" x2="125" y2="202" class="path" marker-end="url(#mm)"/>
+  <rect x="10" y="206" width="230" height="34" rx="6" class="box"/>
+  <text x="125" y="228" text-anchor="middle" style="font-size:11px">saga.evt.boleto-validado</text>
+
+  <rect x="270" y="40" width="230" height="34" rx="6" class="box"/>
+  <text x="385" y="62" text-anchor="middle" style="font-size:10px">saga.cmd.reservar-saldo</text>
+  <line x1="385" y1="74" x2="385" y2="110" class="path" marker-end="url(#mm)"/>
+  <rect x="270" y="114" width="230" height="52" rx="8" class="box"/>
+  <text x="385" y="136" text-anchor="middle" class="lbl" style="font-size:12px">Conta / Saldo</text>
+  <text x="385" y="152" text-anchor="middle" class="cap">≥R$700 = insuficiente</text>
+  <line x1="385" y1="166" x2="385" y2="202" class="path" marker-end="url(#mm)"/>
+  <rect x="270" y="206" width="230" height="34" rx="6" class="box"/>
+  <text x="385" y="228" text-anchor="middle" style="font-size:10.5px">saga.evt.saldo-reservado</text>
+  <text x="270" y="8" class="cap" style="font-size:9.5px">também escuta: saga.cmd.compensar-reserva → publica saga.evt.saldo-liberado</text>
+
+  <rect x="530" y="40" width="230" height="34" rx="6" class="box"/>
+  <text x="645" y="62" text-anchor="middle" style="font-size:10px">saga.cmd.enviar-liquidacao</text>
+  <line x1="645" y1="74" x2="645" y2="110" class="path" marker-end="url(#mm)"/>
+  <rect x="530" y="114" width="230" height="52" rx="8" class="box"/>
+  <text x="645" y="136" text-anchor="middle" class="lbl" style="font-size:12px">Liquidação</text>
+  <text x="645" y="152" text-anchor="middle" class="cap">≥R$500 = falha (simulado)</text>
+  <line x1="645" y1="166" x2="645" y2="202" class="path" marker-end="url(#mm)"/>
+  <rect x="530" y="206" width="230" height="34" rx="6" class="box"/>
+  <text x="645" y="228" text-anchor="middle" style="font-size:9.5px">saga.evt.liquidacao-processada</text>
+
+  <rect x="800" y="114" width="180" height="60" rx="8" class="box-bad"/>
+  <text x="890" y="140" text-anchor="middle" class="lbl lbl-bad" style="font-size:12px">saga.dlq</text>
+  <text x="890" y="156" text-anchor="middle" class="cap">nack de qualquer fila</text>
+  <path d="M240 140 L800 140" class="path-bad"/>
+  <path d="M500 140 L800 140" class="path-bad"/>
+  <path d="M760 140 L800 140" class="path-bad" marker-end="url(#mb2)"/>
+</svg>
