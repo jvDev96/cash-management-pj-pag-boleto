@@ -21,6 +21,7 @@ type PagamentoResponse = {
   estado: SagaState;
   motivoFalha: string | null;
   atualizadoEm: string;
+  protocolo: string | null;
   historico: HistoricoEntry[];
 };
 
@@ -39,6 +40,7 @@ export function usePaymentSaga() {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState(false);
   const [historico, setHistorico] = useState<HistoricoEntry[]>([]);
+  const [protocolo, setProtocolo] = useState<string | null>(null);
 
   const enviarPagamento = (linhaDigitavel: string, valor: number) => {
     setEnviando(true);
@@ -58,6 +60,7 @@ export function usePaymentSaga() {
         setEstado(dados.estado);
         setMotivoFalha(dados.motivoFalha);
         setEnviando(false);
+        setProtocolo(dados.protocolo);
         setHistorico(dados.historico);
       })
       .catch(() => {
@@ -77,6 +80,7 @@ export function usePaymentSaga() {
         .then((dados: PagamentoResponse) => {
           setEstado(dados.estado);
           setMotivoFalha(dados.motivoFalha);
+          setProtocolo(dados.protocolo);
           setHistorico(dados.historico);
 
           if (ESTADOS_TERMINAIS.includes(dados.estado)) {
@@ -96,5 +100,5 @@ export function usePaymentSaga() {
     };
   }, [sagaId]);
 
-  return { sagaId, estado, motivoFalha, enviando, erro, historico, enviarPagamento };
+  return { sagaId, estado, motivoFalha, enviando, erro, historico, protocolo, enviarPagamento };
 }

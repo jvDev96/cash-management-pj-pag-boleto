@@ -13,7 +13,7 @@ import com.itau.boletosaga.saga.SagaTransicao;
 // que nao e assunto da API. Desacoplar o contrato HTTP do formato do banco
 // significa que um pode mudar sem quebrar o outro.
 public record PagamentoResponse(UUID sagaId, SagaState estado, String motivoFalha, Instant atualizadoEm,
-                                 List<HistoricoEntry> historico) {
+                                 String protocolo, List<HistoricoEntry> historico) {
 
     // DECISAO: historico embutido na mesma resposta, nao um endpoint separado.
     // PORQUE: o front faz polling nesse endpoint repetidamente - trazer tudo
@@ -28,6 +28,6 @@ public record PagamentoResponse(UUID sagaId, SagaState estado, String motivoFalh
     public static PagamentoResponse de(Saga saga, List<SagaTransicao> transicoes) {
         List<HistoricoEntry> historico = transicoes.stream().map(HistoricoEntry::de).toList();
         return new PagamentoResponse(saga.getId(), saga.getEstado(), saga.getMotivoFalha(), saga.getAtualizadoEm(),
-                historico);
+                saga.getProtocolo(), historico);
     }
 }

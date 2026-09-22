@@ -6,9 +6,10 @@ type PaymentStatusTrackerProps = {
   estado: SagaState | null;
   historico: HistoricoEntry[];
   motivoFalha: string | null;
+  protocolo: string | null;
 };
 
-export function PaymentStatusTracker({ estado, historico, motivoFalha }: PaymentStatusTrackerProps) {
+export function PaymentStatusTracker({ estado, historico, protocolo, motivoFalha }: PaymentStatusTrackerProps) {
   const linhas = montarTimeline(estado, historico, motivoFalha);
 
   // DECISAO: sem pagamento em andamento (estado null), nao renderiza nada.
@@ -36,6 +37,9 @@ export function PaymentStatusTracker({ estado, historico, motivoFalha }: Payment
                 <strong>MOTIVO DA FALHA</strong>
                 <p>{linha.motivoFalha}</p>
               </div>
+            )}
+            {linha.id === "RESULTADO" && linha.status === "concluido" && protocolo && (
+              <p>Protocolo: {protocolo}</p>
             )}
           </li>
         ))}

@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 // DECISAO: SagaOrchestrator mora em "saga" (domínio), não em "saga.messaging".
 // PORQUE: ele é quem DECIDE o que fazer a seguir, não so transporta mensagem -
@@ -110,6 +111,16 @@ public class SagaOrchestrator {
         sagaTransicaoRepository.save(new SagaTransicao(saga.getId(), saga.getEstado(), Instant.now()));
     }
 
+    // DECISAO: formato "ITU-" + 7 digitos aleatorios, sem garantia formal de
+    // unicidade (sem constraint UNIQUE no banco).
+    // PORQUE: e so um numero de referencia pra exibicao/suporte, nao uma
+    // chave de negocio (quem identifica a saga de verdade e o sagaId/UUID) -
+    // colisao teoricamente possivel, mas irrelevante pro escopo do case.
+    private String gerarProtocolo() {
+        int numero = ThreadLocalRandom.current().nextInt(10_000_000);
+        return String.format("ITU-%07d", numero);
+    }
+
     @RabbitListener(queues = SagaMessagingConfig.EVT_BOLETO_VALIDADO)
     public void aoValidarBoleto(BoletoValidadoEvent evento, Channel channel,
                                  @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
@@ -188,6 +199,7 @@ public class SagaOrchestrator {
             if (podeProcessar(evento.sagaId(), saga, SagaState.LIQUIDACAO_ENVIADA)) {
                 if (evento.sucesso()) {
                     saga.transicionarPara(SagaState.CONCLUIDO);
+                    saga.definirProtocolo(gerarProtocolo());
                     salvarComHistorico(saga);
                 } else {
                     saga.registrarFalha(evento.motivoFalha());

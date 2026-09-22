@@ -39,6 +39,11 @@ public class Saga {
 
     private String motivoFalha;
 
+    // DECISAO: nullable, so preenchido quando a saga chega em CONCLUIDO.
+    // PORQUE: protocolo so faz sentido pra um pagamento que realmente
+    // aconteceu - nao existe "protocolo de tentativa" nesse dominio.
+    private String protocolo;
+
     @Column(nullable = false)
     private Instant criadoEm;
 
@@ -100,6 +105,10 @@ public class Saga {
         this.vencimento = vencimento;
     }
 
+    public void definirProtocolo(String protocolo) {
+        this.protocolo = protocolo;
+    }
+
     public UUID getId() {
         return id;
     }
@@ -130,6 +139,10 @@ public class Saga {
 
     public String getMotivoFalha() {
         return motivoFalha;
+    }
+
+    public String getProtocolo() {
+        return protocolo;
     }
 
     public Instant getCriadoEm() {
