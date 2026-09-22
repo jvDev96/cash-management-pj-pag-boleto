@@ -8,7 +8,7 @@ describe("BoletoInput", () => {
             <BoletoInput
                 linhaDigitavel=""
                 aoAlterar={vi.fn()}
-                resultado={{ valido: false, formato: "INVALIDO" }}
+                resultado={{ valido: false, formato: "INVALIDO", motivo: "TAMANHO_INVALIDO" }}
             />
         );
 
@@ -20,11 +20,23 @@ describe("BoletoInput", () => {
             <BoletoInput
                 linhaDigitavel={"1".repeat(43)}
                 aoAlterar={vi.fn()}
-                resultado={{ valido: false, formato: "INVALIDO" }}
+                resultado={{ valido: false, formato: "INVALIDO", motivo: "TAMANHO_INVALIDO" }}
             />
         );
 
         expect(screen.queryByRole("alert")).not.toBeNull();
+    });
+
+    it("mostra a mensagem especifica do motivo de invalidez, nao um texto generico", () => {
+        render(
+            <BoletoInput
+                linhaDigitavel={"1".repeat(47)}
+                aoAlterar={vi.fn()}
+                resultado={{ valido: false, formato: "BOLETO", motivo: "DV_BLOCO_2_INVALIDO" }}
+            />
+        );
+
+        expect(screen.getByRole("alert").textContent).toContain("2º bloco");
     });
 
     it("nao mostra erro quando a linha e valida", () => {
@@ -32,7 +44,7 @@ describe("BoletoInput", () => {
             <BoletoInput
                 linhaDigitavel={"1".repeat(47)}
                 aoAlterar={vi.fn()}
-                resultado={{ valido: true, formato: "BOLETO" }}
+                resultado={{ valido: true, formato: "BOLETO", motivo: null }}
             />
         );
 
@@ -45,7 +57,7 @@ describe("BoletoInput", () => {
             <BoletoInput
                 linhaDigitavel=""
                 aoAlterar={aoAlterar}
-                resultado={{ valido: false, formato: "INVALIDO" }}
+                resultado={{ valido: false, formato: "INVALIDO", motivo: "TAMANHO_INVALIDO" }}
             />
         );
 

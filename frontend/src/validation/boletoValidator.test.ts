@@ -31,6 +31,7 @@ describe("validarLinhaDigitavel - boleto bancario", () => {
     expect(validarLinhaDigitavel(linhaValida)).toEqual({
       valido: true,
       formato: "BOLETO",
+      motivo: null,
     });
   });
 
@@ -39,6 +40,7 @@ describe("validarLinhaDigitavel - boleto bancario", () => {
     expect(validarLinhaDigitavel(linhaAdulterada)).toEqual({
       valido: false,
       formato: "BOLETO",
+      motivo: "DV_BLOCO_1_INVALIDO",
     });
   });
 });
