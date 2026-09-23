@@ -25,7 +25,8 @@ e replicada em SVG em [`docs/`](docs/).
 
 ## Como rodar
 
-Pré-requisitos: Docker Desktop, Java 17, Node 18+.
+Pré-requisitos: Docker Desktop, Java 17, Node 22.12+ (Vitest 5.x não
+suporta Node 20 — ver `.github/workflows/frontend.yml`).
 
 ```powershell
 # 1. Infraestrutura (Postgres + RabbitMQ)
@@ -69,8 +70,10 @@ Frontend (React) → API REST → Saga Orchestrator → RabbitMQ (8 filas + DLQ)
   detecta uma saga presa há mais de 30s numa etapa que espera resposta).
 - **Histórico auditável** (`SagaTransicao`): cada transição de estado vira
   uma linha, não só o estado atual — alimenta a timeline em tempo real do front.
-- **Frontend**: 3 páginas (Home, Pagar Boleto, Histórico), 4 hooks
-  (`useBoletoValidation`, `useBoletoPreview`, `usePaymentSaga`, `usePaymentHistory`),
+- **Frontend**: página única (Home) com seções trocadas por query param
+  (Pagar Boleto, Histórico, Autodepósito) + tela de detalhe do histórico,
+  7 hooks (`useBoletoValidation`, `useBoletoPreview`, `usePaymentSaga`,
+  `usePaymentHistory`, `usePaymentDetalhe`, `useAutodeposito`, `useSaldo`),
   design system em SCSS com CSS Modules.
 
 Diagramas completos (máquina de estados, topologia RabbitMQ, superfície REST):
@@ -79,12 +82,13 @@ ver [`docs/`](docs/) ou o artifact [Arquitetura Implementada](https://claude.ai/
 ## Decisões técnicas principais
 
 Resumo curado — a extração completa de **todo** comentário `DECISAO`/`PORQUE`
-do código (57 no total, back e front, com arquivo/linha) está em
+do código (102 pontos, back e front, com arquivo/linha) está em
 [`docs/DECISOES.md`](docs/DECISOES.md).
 
 | Decisão | Motivo, resumido |
 |---|---|
 | Saga **orquestrada**, não coreografada | Um único componente (`SagaOrchestrator`) decide "o que vem depois" — mais fácil de raciocinar, testar e observar do que lógica de transição espalhada entre serviços. |
+| **RabbitMQ (AMQP)**, não Kafka | O padrão aqui é comando ponto-a-ponto com confirmação — o Orchestrator manda uma instrução pra **um** serviço específico e espera a resposta dele, não publica um evento pra múltiplos consumidores independentes lerem no próprio ritmo. RabbitMQ entrega isso nativamente: fila dedicada por comando, ack/nack por mensagem, DLQ automática por fila. Reproduzir as mesmas garantias em Kafka exigiria desenhar partição, consumer group e retenção pra um problema que não precisa de replay de histórico nem de múltiplos consumidores do mesmo evento — complexidade sem benefício aqui. Kafka ganharia se o requisito fosse outro: um log de eventos imutável, replay a qualquer ponto do tempo, ou vários serviços diferentes reagindo independentemente ao mesmo evento (ex: um pipeline de analytics consumindo o mesmo stream de pagamentos que o Orchestrator). |
 | `SagaState` como enum com mapa de transições válidas | A entidade `Saga` nunca aceita uma transição inválida — `transicionarPara(...)` valida contra `podeTransicionarPara`, não existe `setEstado` genérico. |
 | Publica evento **antes** de confirmar (ack) o comando | Ordem inversa arriscaria perda silenciosa de mensagem se o ack acontecesse e o publish falhasse depois. |
 | `@Version` (lock otimista) na `Saga` | Corrida real entre o Orchestrator (reagindo a evento) e o Scheduler (detectando timeout) escrevendo a mesma linha ao mesmo tempo — sem isso, um sobrescreve o outro silenciosamente. |
@@ -98,14 +102,22 @@ do código (57 no total, back e front, com arquivo/linha) está em
 
 ## Testes
 
-**19 testes de backend** (JUnit + Mockito) — máquina de estados, entidade
-`Saga`, e `SagaOrchestrator` (incluindo teste de regressão com `InOrder`
+**38 testes de backend** (JUnit + Mockito + Testcontainers) — máquina de
+estados (`SagaStateMachineTest`), entidades `Saga`/`Cliente`,
+`SagaOrchestrator` (7 testes Mockito, incluindo regressão com `InOrder`
 para o bug de ordem save/publish, e prova formal via `ArgumentCaptor` de
-que o histórico grava as 2 linhas certas mesmo com 1 save só).
+que o histórico grava as 2 linhas certas mesmo com 1 save só),
+`ConsultaBoletoService` (extração de valor por formato, convênio sem banco
+emissor), e **`SagaIntegrationTest`** — 6 cenários de ponta a ponta contra
+Postgres e RabbitMQ **reais** via Testcontainers (não H2 nem mock),
+cobrindo sucesso completo, saldo insuficiente, boleto duplicado
+bloqueado/liberado e depósito destravando reserva. Roda em CI (GitHub
+Actions já traz Docker nativo no runner).
 
-**45 testes de frontend** (Vitest + Testing Library) — algoritmos Mod10/Mod11
-(valores calculáveis à mão), `boletoValidator`, os 4 hooks (com mock de
-`fetch`, fake timers pro polling), e os componentes visuais.
+**74 testes de frontend** (Vitest + Testing Library) — algoritmos
+Mod10/Mod11/Mod11-convênio (valores calculáveis à mão), `boletoValidator`,
+`bancos`, os 7 hooks (com mock de `fetch`, fake timers pro polling), e os
+componentes visuais.
 
 ```powershell
 cd backend && .\mvnw.cmd test
@@ -117,6 +129,11 @@ cd frontend && npm run test
 Além do obrigatório (validação Mod10/Mod11, fluxo completo com compensação,
 status assíncrono consultável, testes unitários):
 
+- **Testes de integração contra Postgres/RabbitMQ reais** (`SagaIntegrationTest`,
+  via Testcontainers) — 6 cenários de ponta a ponta, não só lógica mockada;
+  prova que filas são declaradas de fato, listeners são registrados de fato,
+  e JSON serializa pela rede de verdade (o que os testes Mockito, isolados
+  de propósito, não provam sozinhos).
 - **Dead-letter queue** — mensagem que falha o processamento nunca desaparece silenciosamente.
 - **Histórico de transições auditável** (`SagaTransicao`) alimentando timeline em tempo real.
 - **Tela de histórico de pagamentos** com paginação real (`Page<T>` do Spring Data).
@@ -132,15 +149,31 @@ status assíncrono consultável, testes unitários):
 ## Limitações conhecidas
 
 - **Retry com backoff configurável** (Spring Retry) não implementado — só a
-  DLQ. Ganho real de retry automático é maior contra uma dependência externa
-  genuinamente instável; nossos listeners simulados falham de forma
-  determinística (reenviar produziria a mesma falha). Se implementado
-  depois, seria aditivo: o guard de idempotência por estado já existe.
-- **Testes são unitários, não de integração** — Mockito no backend, mocks de
-  `fetch` no frontend. Nenhum teste sobe Postgres/RabbitMQ reais
-  (Testcontainers não foi usado).
+  DLQ. São correções de problemas diferentes: a DLQ garante que nenhuma
+  mensagem falha desaparece em silêncio (por isso ficou no núcleo desde o
+  início); retry reduz quantas vezes você precisa dessa rede de segurança,
+  mas não muda se o sistema está correto. O ganho real de retry automático é
+  maior contra uma dependência externa genuinamente instável — os listeners
+  simulados deste projeto falham de forma **determinística** (reenviar o
+  mesmo comando produziria a mesma falha), então o retorno aqui seria baixo.
+  Se implementado depois, é aditivo: o guard de idempotência baseado em
+  estado que já existe é exatamente a base que um retry precisaria.
 - **Status em tempo real via polling, não WebSocket/SSE** — RF04 permite
-  polling explicitamente; troca por push seria evolução natural.
+  polling explicitamente, e o custo de migrar é conhecido e baixo: eu
+  publicaria no mesmo ponto onde já registro histórico
+  (`salvarComHistorico`/`registrarTransicao`, tanto no `SagaOrchestrator`
+  quanto no `SagaTimeoutScheduler`) pro tópico `/topic/pagamentos/{sagaId}`
+  via `SimpMessagingTemplate`, reaproveitando o **mesmo DTO**
+  (`PagamentoResponse`) que o REST já devolve — sem duplicar contrato. No
+  front, o `setInterval` de `usePaymentSaga`/`usePaymentDetalhe` viraria um
+  client STOMP assinando esse tópico. O trade-off real, que eu levantaria
+  sem esperar a pergunta: com múltiplas instâncias atrás de um load
+  balancer, uma mensagem publicada na instância A não chega no cliente
+  conectado na B — precisa de um broker relay externo. Como o projeto já
+  roda RabbitMQ, eu habilitaria o plugin STOMP dele como relay, em vez de
+  introduzir Redis pub/sub só pra isso. Não entrou porque o ganho aqui é
+  cosmético — polling de 1,5s é imperceptível nesse fluxo — e o tempo foi
+  melhor investido no caminho obrigatório e nos testes de integração.
 - **Timeout assume falha por silêncio** — o `SagaTimeoutScheduler` compensa
   uma saga presa sem confirmar com o sistema externo se a operação
   realmente não aconteceu (problema conhecido de sistemas distribuídos:
