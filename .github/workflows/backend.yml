@@ -1,0 +1,90 @@
+name: Backend
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # DECISAO: services (Postgres/RabbitMQ) aqui, além do Testcontainers
+    # que o SagaIntegrationTest já sobe sozinho.
+    # PORQUE: a suíte não separa formalmente unitário vs. integração (não
+    # existe profile/perfil do failsafe pra isso) - rodar "mvn test" puro
+    # já executa TUDO, incluindo o BoletoSagaBackendApplicationTests
+    # (@SpringBootTest simples, sobe o contexto contra
+    # localhost:5432/5672 fixos no application.properties, não contra
+    # container descartável). Sem esses services aqui, só esse teste
+    # falharia por falta de infraestrutura - o SagaIntegrationTest continua
+    # se virando sozinho via Testcontainers (o runner do GitHub Actions já
+    # vem com Docker disponível nativamente, sem configuração extra).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: boleto_saga
+          POSTGRES_USER: boleto_saga
+          POSTGRES_PASSWORD: boleto_saga
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      rabbitmq:
+        image: rabbitmq:3-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: boleto_saga
+          RABBITMQ_DEFAULT_PASS: boleto_saga
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      # DECISAO: chmod explicito no workflow, nao so confiar no bit de
+      # execucao commitado no git.
+      # PORQUE: mvnw foi commitado a partir de uma maquina Windows - o modo
+      # do arquivo no git ficou 100644 (sem +x), o que quebra "./mvnw" no
+      # runner Linux com "Permission denied". Forcar aqui e mais robusto
+      # que depender do modo do arquivo estar certo no repositorio.
+      - name: Garantir que o mvnw é executável
+        working-directory: backend
+        run: chmod +x mvnw
+
+      - name: Rodar testes (mvn test)
+        working-directory: backend
+        run: ./mvnw test --batch-mode
+
+      - name: Publicar relatório de testes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-surefire-reports
+          path: backend/target/surefire-reports
+          retention-days: 7

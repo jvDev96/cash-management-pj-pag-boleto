@@ -1,0 +1,55 @@
+name: Frontend
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend.yml"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: frontend
+        run: npm ci
+
+      # DECISAO: type-check como passo proprio, separado do "npm run test".
+      # PORQUE: vitest roda sobre o codigo transformado (esbuild), nao
+      # verifica tipo - um erro de tipo pode passar batido no teste e so
+      # aparecer depois, no build. Rodar tsc explicito aqui pega isso cedo,
+      # antes de gastar tempo rodando a suite inteira.
+      - name: Verificar tipos (tsc)
+        working-directory: frontend
+        run: npx tsc -b --noEmit
+
+      - name: Rodar testes (vitest)
+        working-directory: frontend
+        run: npm run test -- --run
+
+      # DECISAO: build de producao tambem entra no CI, nao so os testes.
+      # PORQUE: e o mesmo motivo de sempre rodar "npm run build" localmente
+      # antes de sugerir commit nesta sessao - pega problema que so aparece
+      # empacotado (import quebrado, chunk gigante) que nem tsc nem vitest
+      # necessariamente detectam sozinhos.
+      - name: Build de produção
+        working-directory: frontend
+        run: npm run build
