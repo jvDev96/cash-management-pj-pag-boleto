@@ -82,7 +82,7 @@ public class SagaTimeoutScheduler {
                 saga.transicionarPara(SagaState.SALDO_LIBERADO);
                 salvarComHistorico(saga);
                 rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.CMD_COMPENSAR_RESERVA,
-                        new CompensarReservaCommand(saga.getId()));
+                        new CompensarReservaCommand(saga.getId(), saga.getValor()));
             }
             case SALDO_LIBERADO -> {
                 saga.transicionarPara(SagaState.FALHOU);

@@ -206,7 +206,7 @@ public class SagaOrchestrator {
                     saga.transicionarPara(SagaState.SALDO_LIBERADO);
                     salvarComHistorico(saga);
                     rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.CMD_COMPENSAR_RESERVA,
-                            new CompensarReservaCommand(saga.getId()));
+                            new CompensarReservaCommand(saga.getId(), saga.getValor()));
                 }
             }
             channel.basicAck(deliveryTag, false);

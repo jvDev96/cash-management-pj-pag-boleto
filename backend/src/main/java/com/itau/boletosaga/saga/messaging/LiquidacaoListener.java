@@ -1,5 +1,8 @@
 package com.itau.boletosaga.saga.messaging;
 
+import com.itau.boletosaga.cliente.Cliente;
+import com.itau.boletosaga.cliente.ClienteConfig;
+import com.itau.boletosaga.cliente.ClienteRepository;
 import com.rabbitmq.client.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,6 +11,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -21,15 +25,21 @@ public class LiquidacaoListener {
     // PORQUE: um valor >= R$700 ja teria sido barrado antes, na reserva de
     // saldo - no fluxo normal, a saga nunca chega ate aqui com esse valor.
     // E uma simulacao pro case, nao uma validacao defensiva de producao.
+    // Continua sendo uma falha de NEGOCIO independente de saldo (ex: sistema
+    // de liquidacao bancaria rejeitou) - por isso nao usa Cliente aqui, so
+    // no caminho de sucesso (ver confirmarDebito abaixo).
     private static final BigDecimal LIMITE_FALHA_LIQUIDACAO = new BigDecimal("500.00");
 
     private final RabbitTemplate rabbitTemplate;
+    private final ClienteRepository clienteRepository;
 
-    public LiquidacaoListener(RabbitTemplate rabbitTemplate) {
+    public LiquidacaoListener(RabbitTemplate rabbitTemplate, ClienteRepository clienteRepository) {
         this.rabbitTemplate = rabbitTemplate;
+        this.clienteRepository = clienteRepository;
     }
 
     @RabbitListener(queues = SagaMessagingConfig.CMD_ENVIAR_LIQUIDACAO)
+    @Transactional
     public void liquidar(EnviarLiquidacaoCommand comando, Channel channel,
                           @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
@@ -48,6 +58,17 @@ public class LiquidacaoListener {
         if (comando.valor().compareTo(LIMITE_FALHA_LIQUIDACAO) >= 0) {
             return LiquidacaoProcessadaEvent.falha(comando.sagaId(), "Falha na liquidacao bancaria (simulado)");
         }
+        // DECISAO: confirmarDebito (mexe no saldo REAL) so acontece aqui, no
+        // sucesso da liquidacao - nunca na reserva.
+        // PORQUE: o saldo disponivel ja tinha sido descontado na reserva
+        // (sinalizacao); o saldo real so pode ser debitado quando o dinheiro
+        // de fato saiu, ou seja, quando a liquidacao bancaria confirma. Se a
+        // liquidacao falhar, o real nunca chega a mudar - so o disponivel,
+        // que a compensacao devolve.
+        Cliente cliente = clienteRepository.findById(ClienteConfig.ID_CLIENTE_DEMO)
+                .orElseThrow(() -> new IllegalStateException("Cliente demo nao foi inicializado"));
+        cliente.confirmarDebito(comando.valor());
+        clienteRepository.save(cliente);
         return LiquidacaoProcessadaEvent.sucesso(comando.sagaId());
     }
 }
