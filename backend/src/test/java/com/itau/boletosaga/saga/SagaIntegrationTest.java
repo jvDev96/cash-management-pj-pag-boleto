@@ -81,7 +81,7 @@ class SagaIntegrationTest {
     @Test
     void fluxoCompletoDeSucessoConcluiEDebitaOSaldoReal() {
         String linhaDigitavel = "34191791234567890123456789012345678901234561"; // nao termina em "0000"
-        BigDecimal valor = new BigDecimal("100.00"); // < 500 (liquidacao) e < 699.99 (saldo)
+        BigDecimal valor = new BigDecimal("100.00"); // < 500 (liquidacao) e < 200.00 (saldo)
 
         UUID sagaId = criarPagamento(linhaDigitavel, valor, HttpStatus.ACCEPTED);
 
@@ -91,14 +91,14 @@ class SagaIntegrationTest {
         assertNotNull(sagaFinal.getProtocolo());
 
         Cliente cliente = clienteRepository.findById(ClienteConfig.ID_CLIENTE_DEMO).orElseThrow();
-        assertEquals(new BigDecimal("599.99"), cliente.getSaldoReal());
-        assertEquals(new BigDecimal("599.99"), cliente.getSaldoDisponivel());
+        assertEquals(new BigDecimal("100.00"), cliente.getSaldoReal());
+        assertEquals(new BigDecimal("100.00"), cliente.getSaldoDisponivel());
     }
 
     @Test
     void saldoInsuficienteRejeitaSemNuncaChegarAExecutarALiquidacao() {
         String linhaDigitavel = "34191791234567890123456789012345678901234562"; // nao termina em "0000"
-        BigDecimal valor = new BigDecimal("700.00"); // >= saldo disponivel inicial (699.99)
+        BigDecimal valor = new BigDecimal("700.00"); // >= saldo disponivel inicial (200.00)
 
         UUID sagaId = criarPagamento(linhaDigitavel, valor, HttpStatus.ACCEPTED);
 
@@ -111,7 +111,7 @@ class SagaIntegrationTest {
         // nunca deveria descontar nada (ver Cliente.reservar, que lanca ANTES
         // de subtrair).
         Cliente cliente = clienteRepository.findById(ClienteConfig.ID_CLIENTE_DEMO).orElseThrow();
-        assertEquals(new BigDecimal("699.99"), cliente.getSaldoDisponivel());
+        assertEquals(new BigDecimal("200.00"), cliente.getSaldoDisponivel());
     }
 
     @Test
@@ -147,19 +147,20 @@ class SagaIntegrationTest {
 
         assertEquals(HttpStatus.OK, respostaDeposito.getStatusCode());
         assertNotNull(respostaDeposito.getBody());
-        assertEquals(new BigDecimal("999.99"), respostaDeposito.getBody().saldoDisponivel());
-        assertEquals(new BigDecimal("999.99"), respostaDeposito.getBody().saldoReal());
+        assertEquals(new BigDecimal("500.00"), respostaDeposito.getBody().saldoDisponivel());
+        assertEquals(new BigDecimal("500.00"), respostaDeposito.getBody().saldoReal());
 
-        // DECISAO: valor 800 - sem o deposito, teria sido REJEITADO na reserva
-        // (saldo insuficiente, ja provado no outro teste). Com o deposito, a
-        // reserva passa (800 <= 999.99) - mas o valor tambem e >= 500, entao
-        // essa MESMA tentativa ainda falha depois, na liquidacao (regra
-        // deterministica separada, nao relacionada a saldo - ver
-        // LiquidacaoListener). O que este teste prova e especificamente que o
-        // deposito destravou a reserva: o estado final e FALHOU (passou pela
-        // reserva), nao REJEITADO (que seria "nem chegou a reservar").
+        // DECISAO: valor 500 - sem o deposito, teria sido REJEITADO na reserva
+        // (saldo insuficiente, saldo inicial 200.00, ja provado no outro
+        // teste). Com o deposito, a reserva passa (500 <= 500.00) - mas o
+        // valor tambem e >= 500, entao essa MESMA tentativa ainda falha
+        // depois, na liquidacao (regra deterministica separada, nao
+        // relacionada a saldo - ver LiquidacaoListener). O que este teste
+        // prova e especificamente que o deposito destravou a reserva: o
+        // estado final e FALHOU (passou pela reserva), nao REJEITADO (que
+        // seria "nem chegou a reservar").
         String linhaDigitavel = "34191791234567890123456789012345678901234565";
-        UUID sagaId = criarPagamento(linhaDigitavel, new BigDecimal("800.00"), HttpStatus.ACCEPTED);
+        UUID sagaId = criarPagamento(linhaDigitavel, new BigDecimal("500.00"), HttpStatus.ACCEPTED);
         Saga sagaFinal = aguardarEstadoTerminal(sagaId);
 
         assertEquals(SagaState.FALHOU, sagaFinal.getEstado());
@@ -167,8 +168,8 @@ class SagaIntegrationTest {
         // a compensacao devolveu a reserva pro disponivel - saldo volta pra
         // onde estava antes dessa tentativa (o real nunca foi confirmado).
         Cliente cliente = clienteRepository.findById(ClienteConfig.ID_CLIENTE_DEMO).orElseThrow();
-        assertEquals(new BigDecimal("999.99"), cliente.getSaldoDisponivel());
-        assertEquals(new BigDecimal("999.99"), cliente.getSaldoReal());
+        assertEquals(new BigDecimal("500.00"), cliente.getSaldoDisponivel());
+        assertEquals(new BigDecimal("500.00"), cliente.getSaldoReal());
     }
 
     @Test
@@ -180,7 +181,7 @@ class SagaIntegrationTest {
         assertEquals(HttpStatus.BAD_REQUEST, resposta.getStatusCode());
 
         Cliente cliente = clienteRepository.findById(ClienteConfig.ID_CLIENTE_DEMO).orElseThrow();
-        assertEquals(new BigDecimal("699.99"), cliente.getSaldoDisponivel());
+        assertEquals(new BigDecimal("200.00"), cliente.getSaldoDisponivel());
     }
 
     private BoletoPreviewResponse consultarPreview(String linhaDigitavel) {

@@ -21,10 +21,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configurar Node 20
+      # DECISAO: Node 22, nao 20.
+      # PORQUE: Vitest 5.x exige Node ^22.12.0 || ^24.0.0 || >=26.0.0 (ver
+      # node_modules/vitest/package.json "engines") - Node 20 nao e mais
+      # suportado e falha com ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING no pool
+      # de testes baseado em VM, mesmo com os testes em si corretos.
+      - name: Configurar Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
