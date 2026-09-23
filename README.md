@@ -13,13 +13,15 @@ e replicada em SVG em [`docs/`](docs/).
 
 ## Sumário
 
-- [Como rodar](#como-rodar)
-- [Arquitetura, em resumo](#arquitetura-em-resumo)
-- [Decisões técnicas principais](#decisões-técnicas-principais)
-- [Testes](#testes)
-- [Diferenciais implementados](#diferenciais-implementados)
-- [Limitações conhecidas](#limitações-conhecidas)
-- [Estrutura do repositório](#estrutura-do-repositório)
+- [Boleto + Saga — Case Técnico Cash Management PJ](#boleto--saga--case-técnico-cash-management-pj)
+  - [Sumário](#sumário)
+  - [Como rodar](#como-rodar)
+  - [Arquitetura, em resumo](#arquitetura-em-resumo)
+  - [Decisões técnicas principais](#decisões-técnicas-principais)
+  - [Testes](#testes)
+  - [Diferenciais implementados](#diferenciais-implementados)
+  - [Limitações conhecidas](#limitações-conhecidas)
+  - [Estrutura do repositório](#estrutura-do-repositório)
 
 ## Como rodar
 
@@ -121,7 +123,6 @@ status assíncrono consultável, testes unitários):
 - **Protocolo de confirmação** gerado no sucesso, exibido só quando cabível.
 - **Mensagem de erro específica por motivo** de invalidez (não um "inválido" genérico).
 - **Retry seguro**: botão "Tentar Novamente" com idempotency key nova (ver `docs/DECISOES.md`).
-- **Massa de teste gerada e verificada programaticamente** ([`MASSAS.md`](MASSAS.md)) — 30 números válidos, 15 inválidos categorizados por motivo.
 - **Diagramas de arquitetura** (design + as-built) publicados e versionados em `docs/`.
 
 ## Limitações conhecidas
@@ -129,8 +130,7 @@ status assíncrono consultável, testes unitários):
 - **Convênio (48 dígitos)**: validação só estrutural (tamanho + dígitos),
   sem DV. O DV real de convênio é **condicional** — a regra muda dependendo
   de um dígito identificador dentro do próprio número, não é o mesmo
-  algoritmo fixo do boleto bancário/código de barras. Complexidade
-  desproporcional ao escopo do case.
+  algoritmo fixo do boleto bancário/código de barras.
 - **Retry com backoff configurável** (Spring Retry) não implementado — só a
   DLQ. Ganho real de retry automático é maior contra uma dependência externa
   genuinamente instável; nossos listeners simulados falham de forma
@@ -147,7 +147,7 @@ status assíncrono consultável, testes unitários):
   timeout não é o mesmo que "sei que falhou"). Não é um risco real aqui
   porque os serviços simulados sempre respondem na hora, sem essa
   ambiguidade — mas seria a primeira coisa a endurecer numa integração real.
-- **Delay artificial nos listeners simulados** (`SimulacaoDelay`, 900ms) —
+- **Delay artificial nos listeners simulados** (`SimulacaoDelay`, 3000ms) —
   existe só pra tornar a timeline visível numa demonstração; não estaria
   presente numa integração real (o serviço externo teria sua própria latência).
 

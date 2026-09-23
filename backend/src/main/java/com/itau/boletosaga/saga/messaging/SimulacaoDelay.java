@@ -8,7 +8,7 @@ package com.itau.boletosaga.saga.messaging;
 // servico externo de verdade teria sua propria latencia).
 public final class SimulacaoDelay {
 
-    private static final long DELAY_MS = 900;
+    private static final long DELAY_MS = 3000;
 
     private SimulacaoDelay() {
     }
