@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { detectarFormato, mascararLinhaDigitavel, validarLinhaDigitavel } from "./boletoValidator";
+import {
+  detectarFormato,
+  extrairValorLocal,
+  mascararLinhaDigitavel,
+  validarLinhaDigitavel,
+} from "./boletoValidator";
 
 
 describe("detectarFormato", () => {
@@ -42,6 +47,67 @@ describe("validarLinhaDigitavel - boleto bancario", () => {
       formato: "BOLETO",
       motivo: "DV_BLOCO_1_INVALIDO",
     });
+  });
+});
+
+describe("validarLinhaDigitavel - convenio/arrecadacao", () => {
+  // identificador (posicao 3) = "8" -> modulo 11 (bloco/geral)
+  const linhaMod11 = "818530741850296307418526963074185298630741852969";
+  // identificador (posicao 3) = "6" -> modulo 10 (bloco/geral)
+  const linhaMod10 = "826052963079418529630745185296307415852963074186";
+
+  it("linha valida usando modulo 11 (identificador 8/9) -> valido", () => {
+    expect(validarLinhaDigitavel(linhaMod11)).toEqual({
+      valido: true,
+      formato: "CONVENIO",
+      motivo: null,
+    });
+  });
+
+  it("linha valida usando modulo 10 (identificador 6/7) -> valido", () => {
+    expect(validarLinhaDigitavel(linhaMod10)).toEqual({
+      valido: true,
+      formato: "CONVENIO",
+      motivo: null,
+    });
+  });
+
+  it("digito adulterado dentro do 1o bloco -> DV_BLOCO_1_INVALIDO", () => {
+    const adulterada = "9" + linhaMod11.slice(1);
+    expect(validarLinhaDigitavel(adulterada)).toEqual({
+      valido: false,
+      formato: "CONVENIO",
+      motivo: "DV_BLOCO_1_INVALIDO",
+    });
+  });
+
+  it("DV geral adulterado (blocos batendo, DV geral nao) -> DV_GERAL_INVALIDO", () => {
+    const adulterada = "818630741852296307418526963074185298630741852969";
+    expect(validarLinhaDigitavel(adulterada)).toEqual({
+      valido: false,
+      formato: "CONVENIO",
+      motivo: "DV_GERAL_INVALIDO",
+    });
+  });
+});
+
+describe("extrairValorLocal - convenio/arrecadacao", () => {
+  const linhaMod11 = "818530741850296307418526963074185298630741852969";
+  const linhaMod10 = "826052963079418529630745185296307415852963074186";
+
+  it("identificador de valor efetivo (8) -> extrai valor em reais", () => {
+    expect(extrairValorLocal(linhaMod11, "CONVENIO")).toBe(307418529.63);
+  });
+
+  it("identificador de valor efetivo (6) -> extrai valor em reais", () => {
+    expect(extrairValorLocal(linhaMod10, "CONVENIO")).toBe(529630741.85);
+  });
+
+  it("identificador de quantidade/referencia (7 ou 9) -> nao e valor direto, retorna null", () => {
+    // posicao 3 (indice 2) e o identificador; extrairValorLocal so le os
+    // digitos, nao valida DV, entao trocar so esse digito basta pro teste
+    const linhaReferencia = linhaMod11.slice(0, 2) + "9" + linhaMod11.slice(3);
+    expect(extrairValorLocal(linhaReferencia, "CONVENIO")).toBeNull();
   });
 });
 

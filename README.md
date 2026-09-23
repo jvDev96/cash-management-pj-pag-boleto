@@ -124,13 +124,13 @@ status assíncrono consultável, testes unitários):
 - **Mensagem de erro específica por motivo** de invalidez (não um "inválido" genérico).
 - **Retry seguro**: botão "Tentar Novamente" com idempotency key nova (ver `docs/DECISOES.md`).
 - **Diagramas de arquitetura** (design + as-built) publicados e versionados em `docs/`.
+- **DV de convênio/arrecadação (48 dígitos) validado de verdade**, seguindo o
+  Layout Padrão FEBRABAN de Arrecadação v08 — 4 blocos com DV próprio +
+  DV geral, módulo (10 ou 11) escolhido dinamicamente por um dígito
+  identificador dentro do próprio número.
 
 ## Limitações conhecidas
 
-- **Convênio (48 dígitos)**: validação só estrutural (tamanho + dígitos),
-  sem DV. O DV real de convênio é **condicional** — a regra muda dependendo
-  de um dígito identificador dentro do próprio número, não é o mesmo
-  algoritmo fixo do boleto bancário/código de barras.
 - **Retry com backoff configurável** (Spring Retry) não implementado — só a
   DLQ. Ganho real de retry automático é maior contra uma dependência externa
   genuinamente instável; nossos listeners simulados falham de forma

@@ -62,9 +62,29 @@ public class ConsultaBoletoService {
         String digitosValor = switch (linhaDigitavel.length()) {
             case 44 -> linhaDigitavel.substring(9, 19); // codigo de barras
             case 47 -> linhaDigitavel.substring(37, 47); // boleto bancario (Campo5)
-            default -> linhaDigitavel.substring(linhaDigitavel.length() - 10); // convenio: aproximacao
+            case 48 -> extrairDigitosValorConvenio(linhaDigitavel);
+            default -> linhaDigitavel.substring(linhaDigitavel.length() - 10);
         };
         long centavos = Long.parseLong(digitosValor);
         return BigDecimal.valueOf(centavos, 2);
+    }
+
+    private String extrairDigitosValorConvenio(String linhaDigitavel) {
+        String codigoBarras = reconstruirCodigoBarrasConvenio(linhaDigitavel);
+        char identificador = codigoBarras.charAt(2);
+        if (identificador != '6' && identificador != '8') {
+            // "7"/"9" = quantidade de moeda ou valor de referencia a
+            // reajustar, nao um valor monetario direto
+            return "00000000000";
+        }
+        return codigoBarras.substring(4, 15);
+    }
+
+    private String reconstruirCodigoBarrasConvenio(String linhaDigitavel) {
+        StringBuilder codigoBarras = new StringBuilder();
+        for (int b = 0; b < 4; b++) {
+            codigoBarras.append(linhaDigitavel, b * 12, b * 12 + 11);
+        }
+        return codigoBarras.toString();
     }
 }

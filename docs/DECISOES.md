@@ -512,11 +512,35 @@ de arquitetura) e [Arquitetura Implementada](https://claude.ai/artifact/9BkZn2ER
 > (ou nem checado ainda) ajuda o usuário a perceber um erro de
 > transcrição olhando pro valor que "não bate" com o que ele esperava, sem
 > esperar nem terminar de digitar nem uma chamada de rede.
-> **DECISAO:** convênio (48 dígitos) devolve `null` — diferente de
-> boleto/código de barras, a posição do valor no convênio NÃO é fixa
-> (depende de um dígito identificador interno, mesma limitação já
-> documentada pro DV de convênio) — extrair errado seria pior que não
-> mostrar nada.
+> **DECISAO:** convênio (48 dígitos) reconstrói o código de barras (4
+> blocos de 11, DV de bloco removido) e só extrai o valor quando o dígito
+> identificador (posição 3) é "6" ou "8" — efetivo em reais. "7"/"9"
+> (quantidade de moeda ou valor de referência a reajustar) devolve `null`.
+> **PORQUE:** extrair um número desses dois últimos campos como se fosse
+> reais mostraria um valor tecnicamente presente na linha mas
+> semanticamente errado — pior que não mostrar nada.
+
+### `validation/mod11.ts:18` — `calcularMod11Convenio()`
+> **DECISAO:** função separada de `calcularMod11`, não um parâmetro extra
+> na existente.
+> **PORQUE:** convênio (Layout FEBRABAN de Arrecadação v08) usa a MESMA
+> soma ponderada (pesos 2-9 ciclando) mas uma regra de arredondamento
+> diferente — checa o RESTO direto (resto 0 ou 1 → DV 0, resto 10 → DV 1,
+> senão DV = 11-resto), enquanto cobrança/boleto bancário checa o DV JÁ
+> calculado (`11-resto`). Confirmado contra os exemplos numéricos do
+> próprio PDF da FEBRABAN antes de escrever qualquer código.
+
+### `validation/boletoValidator.ts:124` — `validarConvenio()`
+> **DECISAO:** convênio (48 dígitos) valida DV de verdade — 4 blocos de
+> 12 (11 de conteúdo + 1 DV de bloco), reconstrução do código de barras de
+> 44 dígitos concatenando os 4 conteúdos, e DV geral igual ao de código de
+> barras (posição 4, calculado sobre o resto).
+> **PORQUE:** o dígito identificador (posição 3, dentro do código de
+> barras reconstruído) escolhe o módulo — "6"/"7" usa Mod10
+> (`calcularMod10`, já existente), "8"/"9" usa Mod11 de convênio
+> (`calcularMod11Convenio`, regra própria). Todos os 4 blocos usam o MESMO
+> módulo do DV geral — não é possível saber qual módulo usar sem antes
+> reconstruir e ler essa posição.
 
 ### `validation/bancos.ts:1` — `BANCOS`
 > **DECISAO:** `Record<string, string>`, não um TS `enum`.
@@ -831,9 +855,8 @@ de arquitetura) e [Arquitetura Implementada](https://claude.ai/artifact/9BkZn2ER
 ### `pages/PagamentoPage.tsx:102` — aviso de "não encontrado"
 > **DECISAO:** mensagem de "não encontrado" explícita, não só o card
 > sumindo em silêncio.
-> **PORQUE:** bug real reportado — linha válida ESTRUTURALMENTE (ex:
-> convênio, que sempre passa na validação client-side) mas terminando em
-> "0000" (regra determinística de "boleto não encontrado" simulada no
+> **PORQUE:** bug real reportado — linha válida (DV batendo) mas terminando
+> em "0000" (regra determinística de "boleto não encontrado" simulada no
 > backend) fazia o card de revisão sumir sem nenhuma explicação —
 > `preview.motivoFalha` já existia no hook, só nunca era renderizado em
 > lugar nenhum.

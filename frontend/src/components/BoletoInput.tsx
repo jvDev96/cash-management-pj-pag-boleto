@@ -18,9 +18,10 @@ type BoletoInputProps = {
 
 const MENSAGENS_POR_MOTIVO: Record<Exclude<MotivoInvalido, null>, string> = {
   TAMANHO_INVALIDO: "A linha digitável precisa ter 44, 47 ou 48 dígitos.",
-  DV_BLOCO_1_INVALIDO: "Dígito verificador do 1º bloco (posições 1-10) não confere. Verifique esse trecho e tente novamente.",
-  DV_BLOCO_2_INVALIDO: "Dígito verificador do 2º bloco (posições 11-21) não confere. Verifique esse trecho e tente novamente.",
-  DV_BLOCO_3_INVALIDO: "Dígito verificador do 3º bloco (posições 22-32) não confere. Verifique esse trecho e tente novamente.",
+  DV_BLOCO_1_INVALIDO: "Dígito verificador do 1º bloco não confere. Verifique esse trecho e tente novamente.",
+  DV_BLOCO_2_INVALIDO: "Dígito verificador do 2º bloco não confere. Verifique esse trecho e tente novamente.",
+  DV_BLOCO_3_INVALIDO: "Dígito verificador do 3º bloco não confere. Verifique esse trecho e tente novamente.",
+  DV_BLOCO_4_INVALIDO: "Dígito verificador do 4º bloco não confere. Verifique esse trecho e tente novamente.",
   DV_GERAL_INVALIDO: "Dígito verificador geral não confere — pode ser erro de digitação em qualquer parte do número. Confira e tente novamente.",
 };
 

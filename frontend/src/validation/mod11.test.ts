@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularMod11 } from "./mod11";
+import { calcularMod11, calcularMod11Convenio } from "./mod11";
 
 describe("calcularMod11", () => {
   it("todos zeros -> resto 0 -> DV vira 11, mas a regra especial converte pra 1", () => {
@@ -23,5 +23,24 @@ describe("calcularMod11", () => {
     const original = calcularMod11("123456780");
     const adulterado = calcularMod11("123456781");
     expect(original).not.toBe(adulterado);
+  });
+});
+
+describe("calcularMod11Convenio", () => {
+  it("resto 0 (todos zeros) -> DV 0", () => {
+    expect(calcularMod11Convenio("00000000000")).toBe(0);
+  });
+
+  it("resto 1 (soma 12) -> DV 0, regra especial de arrecadacao (diferente da cobranca)", () => {
+    expect(calcularMod11Convenio("00000000006")).toBe(0);
+  });
+
+  it("resto 10 (soma 10) -> DV 1", () => {
+    expect(calcularMod11Convenio("00000000005")).toBe(1);
+  });
+
+  it("resto entre 2 e 9 -> DV = 11 - resto", () => {
+    // soma = 1*2 = 2 -> resto = 2 -> DV = 11-2 = 9
+    expect(calcularMod11Convenio("00000000001")).toBe(9);
   });
 });

@@ -1,5 +1,5 @@
 import { calcularMod10 } from "./mod10";
-import { calcularMod11 } from "./mod11";
+import { calcularMod11, calcularMod11Convenio } from "./mod11";
 
 export type FormatoLinhaDigitavel =
 | "CODIGO_DE_BARRAS"
@@ -12,6 +12,7 @@ export type MotivoInvalido =
   | "DV_BLOCO_1_INVALIDO"
   | "DV_BLOCO_2_INVALIDO"
   | "DV_BLOCO_3_INVALIDO"
+  | "DV_BLOCO_4_INVALIDO"
   | "DV_GERAL_INVALIDO"
   | null; // null quando é válido
 
@@ -48,8 +49,10 @@ export function validarLinhaDigitavel(linhaDigitavel: string): ResultadoValidaca
       const motivo = validarCodigoDeBarras(linhaDigitavel);
       return { valido: motivo === null, formato, motivo };
     }
-    case "CONVENIO":
-      return { valido: true, formato, motivo: null };
+    case "CONVENIO": {
+      const motivo = validarConvenio(linhaDigitavel);
+      return { valido: motivo === null, formato, motivo };
+    }
     case "BOLETO": {
       const motivo = validarBoletoBancario(linhaDigitavel);
       return { valido: motivo === null, formato, motivo };
@@ -106,6 +109,48 @@ function validarCodigoDeBarras(codigoDeBarras: string): MotivoInvalido {
   return dvEsperado === dvInformado ? null : "DV_GERAL_INVALIDO";
 }
 
+const MOTIVOS_BLOCO_CONVENIO: MotivoInvalido[] = [
+  "DV_BLOCO_1_INVALIDO",
+  "DV_BLOCO_2_INVALIDO",
+  "DV_BLOCO_3_INVALIDO",
+  "DV_BLOCO_4_INVALIDO",
+];
+
+// Layout FEBRABAN de Arrecadação/Convênio (v08): a linha digitável de 48
+// dígitos são 4 blocos de 11 dígitos de conteúdo + 1 DV de bloco cada. O
+// dígito na posição 3 do código de barras reconstruído escolhe o módulo
+// (10 para "6"/"7", 11 para "8"/"9") usado tanto nos DVs de bloco quanto no
+// DV geral.
+function validarConvenio(linhaDigitavel: string): MotivoInvalido {
+  const usaMod11 = linhaDigitavel[2] === "8" || linhaDigitavel[2] === "9";
+  const calcularDv = usaMod11 ? calcularMod11Convenio : calcularMod10;
+
+  const conteudos: string[] = [];
+  for (let b = 0; b < 4; b++) {
+    const bloco = linhaDigitavel.slice(b * 12, b * 12 + 12);
+    const conteudo = bloco.slice(0, 11);
+    const dvInformado = Number(bloco[11]);
+    if (calcularDv(conteudo) !== dvInformado) {
+      return MOTIVOS_BLOCO_CONVENIO[b];
+    }
+    conteudos.push(conteudo);
+  }
+
+  const codigoBarras = conteudos.join("");
+  const semDvGeral = codigoBarras.slice(0, 3) + codigoBarras.slice(4);
+  const dvGeralEsperado = calcularDv(semDvGeral);
+  const dvGeralInformado = Number(codigoBarras[3]);
+  return dvGeralEsperado === dvGeralInformado ? null : "DV_GERAL_INVALIDO";
+}
+
+function reconstruirCodigoBarrasConvenio(linhaDigitavel: string): string {
+  let codigoBarras = "";
+  for (let b = 0; b < 4; b++) {
+    codigoBarras += linhaDigitavel.slice(b * 12, b * 12 + 11);
+  }
+  return codigoBarras;
+}
+
 export function mascararLinhaDigitavel(raw: string): string {
   if (raw.length > TAMANHO_MAXIMO_FORMATO_VALIDO) {
     return raw;
@@ -154,16 +199,27 @@ function formatarComPonto(campo: string, posicaoPonto: number): string {
 
 export function extrairValorLocal(linhaDigitavel: string, formato: FormatoLinhaDigitavel): number | null {
   if (formato === "BOLETO") {
-    return centavosParaReais(linhaDigitavel.slice(37, 47));
+    return centavosParaReais(linhaDigitavel.slice(37, 47), 10);
   }
   if (formato === "CODIGO_DE_BARRAS") {
-    return centavosParaReais(linhaDigitavel.slice(9, 19));
+    return centavosParaReais(linhaDigitavel.slice(9, 19), 10);
+  }
+  if (formato === "CONVENIO") {
+    // identificador "6"/"8" = valor efetivo em reais; "7"/"9" = quantidade
+    // de moeda ou valor de referência a reajustar - não é um valor direto.
+    if (linhaDigitavel[2] !== "6" && linhaDigitavel[2] !== "8") {
+      return null;
+    }
+    const codigoBarras = reconstruirCodigoBarrasConvenio(linhaDigitavel);
+    // campo de valor do convenio (posicoes 5-15 do codigo de barras) tem 11
+    // digitos, um a mais que boleto/codigo de barras (10)
+    return centavosParaReais(codigoBarras.slice(4, 15), 11);
   }
   return null;
 }
 
-function centavosParaReais(digitosValor: string): number | null {
-  if (!/^\d{10}$/.test(digitosValor)) {
+function centavosParaReais(digitosValor: string, tamanhoEsperado: number): number | null {
+  if (digitosValor.length !== tamanhoEsperado || !/^\d+$/.test(digitosValor)) {
     return null;
   }
   return Number(digitosValor) / 100;

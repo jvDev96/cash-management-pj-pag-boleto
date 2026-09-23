@@ -41,6 +41,28 @@ class ConsultaBoletoServiceTest {
         assertEquals(new BigDecimal("150.00"), resposta.valor());
     }
 
+    @Test
+    void extraiValorDoConvenioReconstruindoOsBlocosDe11() {
+        semSagaExistente();
+        // mesma linha usada nos testes de mod11.ts/boletoValidator.ts do front:
+        // identificador (posicao 3) = "8" -> valor efetivo em reais
+        String linha = "818530741850296307418526963074185298630741852969"; // 48 digitos
+        BoletoPreviewResponse resposta = service.consultar(linha);
+
+        assertEquals(new BigDecimal("307418529.63"), resposta.valor());
+    }
+
+    @Test
+    void identificadorDeQuantidadeReferenciaNoConvenioNaoRetornaValorDireto() {
+        semSagaExistente();
+        // mesma linha acima, trocando so o identificador (posicao 3) pra "9"
+        // (quantidade/referencia) - nao e um valor monetario direto
+        String linha = "81" + "9" + "530741850296307418526963074185298630741852969";
+        BoletoPreviewResponse resposta = service.consultar(linha);
+
+        assertEquals(BigDecimal.ZERO.setScale(2), resposta.valor());
+    }
+
     private void semSagaExistente() {
         when(sagaRepository.findFirstByLinhaDigitavelAndEstadoNotInOrderByCriadoEmDesc(
                 org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
