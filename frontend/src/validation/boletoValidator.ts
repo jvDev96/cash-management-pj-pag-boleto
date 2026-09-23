@@ -166,3 +166,49 @@ function formatarComPonto(campo: string, posicaoPonto: number): string {
   }
   return `${campo.slice(0, posicaoPonto)}.${campo.slice(posicaoPonto)}`;
 }
+
+// DECISAO: extrai o valor so quando o FORMATO ja e conhecido (length exato
+// de 44 ou 47), independente do DV estar certo ainda.
+// PORQUE: formato/posicao dos campos e uma propriedade ESTRUTURAL (so
+// depende do tamanho), nao da validade do digito verificador - mostrar o
+// valor reativamente, so-cliente, mesmo com uma linha ainda com DV errado
+// (ou nem checado ainda) ajuda o usuario a perceber um erro de transcricao
+// olhando pro valor que "nao bate" com o que ele esperava, sem esperar
+// nem terminar de digitar nem uma chamada de rede.
+// DECISAO: convenio (48 digitos) devolve null - diferente de boleto/codigo
+// de barras, a posicao do valor no convenio NAO e fixa (depende de um
+// digito identificador interno, mesma limitacao ja documentada pro DV de
+// convenio) - extrair errado seria pior que nao mostrar nada.
+export function extrairValorLocal(linhaDigitavel: string, formato: FormatoLinhaDigitavel): number | null {
+  if (formato === "BOLETO") {
+    // Campo5 (posicoes 33-47) = vencimento(4) + valor(10) - mesma posicao
+    // (ultimos 10 digitos da linha inteira) usada em ConsultaBoletoService
+    // no backend.
+    return centavosParaReais(linhaDigitavel.slice(37, 47));
+  }
+  if (formato === "CODIGO_DE_BARRAS") {
+    // codigo de barras: banco(3) + moeda(1) + DV(1) + vencimento(4) + valor(10) + campo-livre(25)
+    return centavosParaReais(linhaDigitavel.slice(9, 19));
+  }
+  return null;
+}
+
+function centavosParaReais(digitosValor: string): number | null {
+  if (!/^\d{10}$/.test(digitosValor)) {
+    return null;
+  }
+  return Number(digitosValor) / 100;
+}
+
+export function rotuloTipo(formato: FormatoLinhaDigitavel): string | null {
+  switch (formato) {
+    case "BOLETO":
+      return "Boleto bancário";
+    case "CODIGO_DE_BARRAS":
+      return "Código de barras";
+    case "CONVENIO":
+      return "Convênio/arrecadação";
+    case "INVALIDO":
+      return null;
+  }
+}

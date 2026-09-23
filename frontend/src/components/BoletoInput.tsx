@@ -4,6 +4,8 @@ import {
   TAMANHO_MAXIMO_LINHA_DIGITAVEL,
   TAMANHO_MAXIMO_FORMATO_VALIDO,
   mascararLinhaDigitavel,
+  extrairValorLocal,
+  rotuloTipo,
 } from "../validation/boletoValidator";
 import { detectarBanco } from "../validation/bancos";
 import styles from "./BoletoInput.module.scss";
@@ -32,12 +34,18 @@ export function BoletoInput({ linhaDigitavel, aoAlterar, resultado }: BoletoInpu
   // precisa da guarda antes de indexar o mapa, senao o TypeScript reclama.
   const mensagemErro = resultado?.motivo ? MENSAGENS_POR_MOTIVO[resultado.motivo] : "";
 
-  // DECISAO: banco e detectado so pelos 3 primeiros digitos, independente do
-  // resto estar valido ainda.
-  // PORQUE: e uma leitura estrutural (posicao fixa em qualquer formato), nao
-  // depende do DV - da feedback visual reativo (qual banco) antes mesmo da
-  // linha estar completa/valida, sem esperar o GET de preview.
+  // DECISAO: previa local inteira (banco, tipo, valor) e derivada so do
+  // dado ja digitado, sem nenhuma chamada de rede - nao espera nem a linha
+  // estar completa, nem o DV estar correto, nem o GET de preview responder.
+  // PORQUE: banco/tipo/valor sao propriedades ESTRUTURAIS da linha
+  // digitavel (posicao fixa por formato, especificacao FEBRABAN) - dado que
+  // o proprio navegador ja tem em maos, nao precisa perguntar pro backend.
+  // So o beneficiario fica de fora dessa previa: e dado simulado que so o
+  // backend "conhece", nao esta codificado na linha de forma nenhuma.
   const bancoDetectado = detectarBanco(linhaDigitavel);
+  const tipoDetectado = rotuloTipo(resultado.formato);
+  const valorDetectado = extrairValorLocal(linhaDigitavel, resultado.formato);
+  const temPreviaLocal = bancoDetectado !== null || tipoDetectado !== null;
 
   // DECISAO: input controlado exibe o valor MASCARADO, mas o onChange extrai
   // digito puro do que veio do DOM antes de repassar pro hook.
@@ -69,8 +77,23 @@ export function BoletoInput({ linhaDigitavel, aoAlterar, resultado }: BoletoInpu
         aria-invalid={exibirErro}
         className={exibirErro ? `${styles.input} ${styles.inputComErro}` : styles.input}
       />
-      {bancoDetectado && (
-        <p className={styles.bancoDetectado}>Banco: {bancoDetectado}</p>
+      {temPreviaLocal && (
+        <dl className={styles.previaLocal}>
+          {tipoDetectado && (
+            <>
+              <dt>Tipo</dt>
+              <dd>{tipoDetectado}</dd>
+            </>
+          )}
+          <dt>Banco</dt>
+          <dd>{bancoDetectado ?? "Não identificado"}</dd>
+          {valorDetectado !== null && (
+            <>
+              <dt>Valor</dt>
+              <dd>{formatarValor(valorDetectado)}</dd>
+            </>
+          )}
+        </dl>
       )}
       {exibirErro && (
         <p role="alert" className={styles.mensagemErro}>
@@ -79,4 +102,8 @@ export function BoletoInput({ linhaDigitavel, aoAlterar, resultado }: BoletoInpu
       )}
     </div>
   );
+}
+
+function formatarValor(valor: number): string {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
 }

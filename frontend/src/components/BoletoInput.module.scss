@@ -54,8 +54,24 @@
   margin: 0;
 }
 
-.bancoDetectado {
-  color: var(--cor-texto-secundario);
-  font-size: 13px;
+.previaLocal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--espaco-md);
   margin: 0;
+  font-size: 13px;
+
+  dt {
+    color: var(--cor-texto-secundario);
+
+    &::after {
+      content: ":";
+    }
+  }
+
+  dd {
+    display: inline;
+    margin: 0 var(--espaco-sm) 0 4px;
+    font-weight: 600;
+  }
 }

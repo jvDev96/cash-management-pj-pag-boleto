@@ -67,4 +67,43 @@ describe("BoletoInput", () => {
 
         expect(aoAlterar).toHaveBeenCalledWith("341.91 111");
     });
+
+    it("com so 3 digitos, ja mostra o banco - sem esperar linha completa nem requisicao", () => {
+        render(
+            <BoletoInput
+                linhaDigitavel="341"
+                aoAlterar={vi.fn()}
+                resultado={{ valido: false, formato: "INVALIDO", motivo: "TAMANHO_INVALIDO" }}
+            />
+        );
+
+        expect(screen.getByText("Itaú Unibanco")).toBeTruthy();
+    });
+
+    it("com linha de boleto completa (47 digitos), mostra tipo e valor extraidos localmente", () => {
+        // 37 primeiros digitos + "0000015000" (valor = R$150,00 nos ultimos 10 digitos)
+        const linha = "3".repeat(37) + "0000015000";
+        render(
+            <BoletoInput
+                linhaDigitavel={linha}
+                aoAlterar={vi.fn()}
+                resultado={{ valido: false, formato: "BOLETO", motivo: "DV_BLOCO_1_INVALIDO" }}
+            />
+        );
+
+        expect(screen.getByText("Boleto bancário")).toBeTruthy();
+        expect(screen.getByText(/R\$\s*150,00/)).toBeTruthy();
+    });
+
+    it("com menos de 3 digitos, nao mostra previa nenhuma", () => {
+        render(
+            <BoletoInput
+                linhaDigitavel="34"
+                aoAlterar={vi.fn()}
+                resultado={{ valido: false, formato: "INVALIDO", motivo: "TAMANHO_INVALIDO" }}
+            />
+        );
+
+        expect(screen.queryByText("Banco")).toBeNull();
+    });
 });
