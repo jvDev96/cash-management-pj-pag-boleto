@@ -57,6 +57,50 @@
   align-items: center;
   gap: var(--espaco-sm);
   font-size: 14px;
+  // DECISAO: position relative aqui, absolute no tooltip filho.
+  // PORQUE: mesma tecnica ja usada na linha vertical do PaymentStatusTracker
+  // - o tooltip ancora relativo a ESTE elemento, nao a pagina inteira.
+  position: relative;
+  cursor: default;
+
+  &:hover .tooltipSaldo {
+    display: flex;
+  }
+}
+
+.tooltipSaldo {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  position: absolute;
+  top: calc(100% + var(--espaco-sm));
+  right: 0;
+  min-width: 220px;
+  padding: var(--espaco-md);
+  border-radius: var(--raio-borda);
+  background-color: var(--cor-branco);
+  color: var(--cor-texto);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  font-size: 13px;
+  z-index: 20;
+
+  dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px var(--espaco-sm);
+    margin: 0;
+  }
+
+  dt {
+    color: var(--cor-texto-secundario);
+  }
+
+  dd {
+    margin: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
 }
 
 .avatar {
