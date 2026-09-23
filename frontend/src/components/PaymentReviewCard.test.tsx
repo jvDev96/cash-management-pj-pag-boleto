@@ -11,6 +11,8 @@ const previewMock: BoletoPreview = {
   tipo: "Boleto bancario",
   banco: "Itau Unibanco S.A.",
   motivoFalha: null,
+  sagaExistente: null,
+  estadoSagaExistente: null,
 };
 
 describe("PaymentReviewCard", () => {
@@ -39,5 +41,21 @@ describe("PaymentReviewCard", () => {
 
     const botao = screen.getByText("Confirmar Pagamento") as HTMLButtonElement;
     expect(botao.disabled).toBe(true);
+  });
+
+  it("com rotuloBotao e mensagemBloqueio, mostra o aviso e troca o texto do botao", () => {
+    render(
+      <PaymentReviewCard
+        preview={previewMock}
+        aoConfirmar={vi.fn()}
+        enviando={false}
+        rotuloBotao="Acompanhar Pagamento"
+        mensagemBloqueio="Este boleto já foi pago."
+      />
+    );
+
+    expect(screen.getByText("Este boleto já foi pago.")).toBeTruthy();
+    expect(screen.getByText("Acompanhar Pagamento")).toBeTruthy();
+    expect(screen.queryByText("Confirmar Pagamento")).toBeNull();
   });
 });

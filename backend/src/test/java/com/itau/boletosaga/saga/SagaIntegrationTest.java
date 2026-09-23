@@ -24,11 +24,13 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import com.itau.boletosaga.cliente.Cliente;
 import com.itau.boletosaga.cliente.ClienteConfig;
 import com.itau.boletosaga.cliente.ClienteRepository;
+import com.itau.boletosaga.saga.web.BoletoPreviewResponse;
 import com.itau.boletosaga.saga.web.CriarPagamentoRequest;
 import com.itau.boletosaga.saga.web.PagamentoResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -108,6 +110,39 @@ class SagaIntegrationTest {
         // de subtrair).
         Cliente cliente = clienteRepository.findById(ClienteConfig.ID_CLIENTE_DEMO).orElseThrow();
         assertEquals(new BigDecimal("699.99"), cliente.getSaldoDisponivel());
+    }
+
+    @Test
+    void boletoJaConcluidoApareceComoBloqueadoNaConsultaDePreview() {
+        String linhaDigitavel = "34191791234567890123456789012345678901234563"; // nao termina em "0000"
+        UUID sagaId = criarPagamento(linhaDigitavel, new BigDecimal("100.00"), HttpStatus.ACCEPTED);
+        aguardarEstadoTerminal(sagaId);
+
+        BoletoPreviewResponse preview = consultarPreview(linhaDigitavel);
+
+        assertEquals(sagaId, preview.sagaExistente());
+        assertEquals(SagaState.CONCLUIDO, preview.estadoSagaExistente());
+    }
+
+    @Test
+    void boletoRejeitadoNaoBloqueiaUmaNovaTentativaDeMesmoNumero() {
+        String linhaDigitavel = "34191791234567890123456789012345678901234564"; // nao termina em "0000"
+        UUID sagaId = criarPagamento(linhaDigitavel, new BigDecimal("700.00"), HttpStatus.ACCEPTED); // saldo insuficiente -> REJEITADO
+        aguardarEstadoTerminal(sagaId);
+
+        BoletoPreviewResponse preview = consultarPreview(linhaDigitavel);
+
+        // DECISAO: REJEITADO/FALHOU nao bloqueiam (SagaState.ESTADOS_QUE_NAO_BLOQUEIAM_NOVO_PAGAMENTO)
+        // - documento que nunca chegou a pagar de verdade pode ser tentado de novo.
+        assertNull(preview.sagaExistente());
+    }
+
+    private BoletoPreviewResponse consultarPreview(String linhaDigitavel) {
+        ResponseEntity<BoletoPreviewResponse> resposta =
+                restTemplate.getForEntity("/boletos/{linha}", BoletoPreviewResponse.class, linhaDigitavel);
+        assertEquals(HttpStatus.OK, resposta.getStatusCode());
+        assertNotNull(resposta.getBody());
+        return resposta.getBody();
     }
 
     private UUID criarPagamento(String linhaDigitavel, BigDecimal valor, HttpStatus statusEsperado) {

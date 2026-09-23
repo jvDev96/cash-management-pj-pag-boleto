@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BASE_URL } from "../api/config";
+import type { SagaState } from "./usePaymentSaga";
 
 export type BoletoPreview = {
     encontrado: boolean;
@@ -9,6 +10,13 @@ export type BoletoPreview = {
     tipo: string | null;
     banco: string | null;
     motivoFalha: string | null;
+    // DECISAO: sagaExistente/estadoSagaExistente vem no mesmo preview, nao
+    // numa chamada separada de "verificar duplicidade".
+    // PORQUE: espelha o DTO do backend (BoletoPreviewResponse) - o back ja
+    // anexa isso na MESMA consulta que o front ja fazia a cada linha valida,
+    // sem round-trip extra.
+    sagaExistente: string | null;
+    estadoSagaExistente: SagaState | null;
 };
 
 export function useBoletoPreview(linhaDigitavel: string, valido: boolean) {

@@ -10,6 +10,8 @@ const previewMock: BoletoPreview = {
   tipo: "Boleto bancario",
   banco: "Itau",
   motivoFalha: null,
+  sagaExistente: null,
+  estadoSagaExistente: null,
 };
 
 afterEach(() => {

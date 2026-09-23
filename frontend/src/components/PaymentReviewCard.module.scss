@@ -39,6 +39,15 @@
   font-weight: 700;
 }
 
+.avisoBloqueio {
+  margin: 0 0 var(--espaco-md);
+  padding: var(--espaco-sm) var(--espaco-md);
+  border-radius: var(--raio-borda);
+  background-color: var(--cor-erro-fundo);
+  color: var(--cor-erro);
+  font-size: 14px;
+}
+
 .botao {
   width: 100%;
   padding: var(--espaco-md);

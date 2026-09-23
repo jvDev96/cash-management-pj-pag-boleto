@@ -5,9 +5,22 @@ type PaymentReviewCardProps = {
   preview: BoletoPreview;
   aoConfirmar: () => void;
   enviando: boolean;
+  // DECISAO: rotuloBotao/mensagemBloqueio opcionais, com default pro
+  // caminho comum (pagamento novo).
+  // PORQUE: o card nao decide SE o boleto ja foi pago - so exibe o que a
+  // pagina manda, mantendo a regra de negocio (quais estados bloqueiam) num
+  // lugar so (PagamentoPage/backend), nao duplicada aqui dentro.
+  rotuloBotao?: string;
+  mensagemBloqueio?: string;
 };
 
-export function PaymentReviewCard({ preview, aoConfirmar, enviando }: PaymentReviewCardProps) {
+export function PaymentReviewCard({
+  preview,
+  aoConfirmar,
+  enviando,
+  rotuloBotao = "Confirmar Pagamento",
+  mensagemBloqueio,
+}: PaymentReviewCardProps) {
   return (
     <div className={styles.card}>
       <h2 className={styles.titulo}>Revisão do Pagamento</h2>
@@ -27,8 +40,13 @@ export function PaymentReviewCard({ preview, aoConfirmar, enviando }: PaymentRev
         <span>Total a debitar</span>
         <span>{formatarValor(preview.valor)}</span>
       </p>
+      {mensagemBloqueio && (
+        <p role="alert" className={styles.avisoBloqueio}>
+          {mensagemBloqueio}
+        </p>
+      )}
       <button type="button" className={styles.botao} onClick={aoConfirmar} disabled={enviando}>
-        Confirmar Pagamento
+        {rotuloBotao}
       </button>
     </div>
   );

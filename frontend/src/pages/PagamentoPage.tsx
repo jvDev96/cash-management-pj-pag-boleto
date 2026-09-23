@@ -1,7 +1,9 @@
 import { lazy, Suspense, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useBoletoValidation } from '../hooks/useBoletoValidation'
 import { useBoletoPreview } from '../hooks/useBoletoPreview'
 import { usePaymentSaga } from '../hooks/usePaymentSaga'
+import type { SagaState } from '../hooks/usePaymentSaga'
 import { BoletoInput } from '../components/BoletoInput'
 import { PaymentReviewCard } from '../components/PaymentReviewCard'
 import { PaymentStatusTracker } from '../components/PaymentStatusTracker'
@@ -18,6 +20,7 @@ const LeitorCodigoBarras = lazy(() =>
 )
 
 export function PagamentoPage() {
+  const navigate = useNavigate()
   const { linhaDigitavel, alterarLinhaDigitavel, resultado, limpar } = useBoletoValidation()
   const [leitorAberto, setLeitorAberto] = useState(false)
   const { preview } = useBoletoPreview(linhaDigitavel, resultado.valido)
@@ -114,8 +117,22 @@ export function PagamentoPage() {
         <PaymentReviewCard
           preview={preview}
           enviando={enviando}
+          rotuloBotao={preview.sagaExistente ? 'Acompanhar Pagamento' : 'Confirmar Pagamento'}
+          mensagemBloqueio={preview.sagaExistente ? mensagemBloqueio(preview.estadoSagaExistente) : undefined}
           aoConfirmar={() => {
-            if (preview.valor !== null) {
+            // DECISAO: se ja existe uma saga bloqueante pra esse numero de
+            // boleto (ver SagaState.ESTADOS_QUE_NAO_BLOQUEIAM_NOVO_PAGAMENTO
+            // no backend), o botao NAVEGA pro acompanhamento dela em vez de
+            // criar um pagamento novo.
+            // PORQUE: idempotency-key so protege contra reenvio acidental da
+            // MESMA tentativa - nao impede o usuario digitar de proposito,
+            // numa tentativa nova, um documento que ja foi pago ou que ainda
+            // pode vir a ser pago. Reaproveita a mesma rota/tela que o
+            // historico ja usa (/historico/:sagaId + PaymentStatusTracker),
+            // nao uma tela nova so pra isso.
+            if (preview.sagaExistente) {
+              navigate(`/historico/${preview.sagaExistente}`)
+            } else if (preview.valor !== null) {
               enviarPagamento(linhaDigitavel, preview.valor)
             }
           }}
@@ -123,4 +140,11 @@ export function PagamentoPage() {
       )}
     </div>
   )
+}
+
+function mensagemBloqueio(estado: SagaState | null): string {
+  if (estado === 'CONCLUIDO') {
+    return 'Este boleto já foi pago.'
+  }
+  return 'Este boleto já tem um pagamento em andamento.'
 }
