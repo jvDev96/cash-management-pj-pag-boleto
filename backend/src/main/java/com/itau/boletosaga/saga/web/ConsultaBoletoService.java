@@ -71,13 +71,28 @@ public class ConsultaBoletoService {
         );
     }
 
-    // DECISAO: extrai o valor dos ultimos 10 digitos, dividido por 100.
-    // PORQUE: e assim que o formato real de linha digitavel de boleto
-    // bancario codifica o valor (em centavos) - mesma posicao do formato de
-    // verdade, so que sem validar contra um registro real.
+    // DECISAO: posicao do campo de valor depende do FORMATO (tamanho), nao e
+    // sempre "os ultimos 10 digitos".
+    // PORQUE: bug real encontrado (relatado com um numero de teste real de
+    // codigo de barras) - so o BOLETO BANCARIO (47 digitos) tem o valor no
+    // final (Campo5 = vencimento(4)+valor(10), ultimas 14 posicoes). No
+    // CODIGO DE BARRAS (44 digitos), o layout e banco(3)+moeda(1)+DV(1)+
+    // vencimento(4)+valor(10)+campo-livre(25) - o valor fica nas posicoes
+    // 9-19, e os ultimos 10 digitos pertencem ao campo livre, nao ao valor.
+    // Pegar "ultimos 10 digitos" as cegas devolvia um numero gigante e
+    // errado pro codigo de barras, divergindo do que o front ja calculava
+    // certo localmente (extrairValorLocal em boletoValidator.ts) - os dois
+    // agora usam exatamente a mesma posicao por formato.
     private BigDecimal extrairValor(String linhaDigitavel) {
-        String ultimosDigitos = linhaDigitavel.substring(linhaDigitavel.length() - 10);
-        long centavos = Long.parseLong(ultimosDigitos);
+        String digitosValor = switch (linhaDigitavel.length()) {
+            case 44 -> linhaDigitavel.substring(9, 19); // codigo de barras
+            case 47 -> linhaDigitavel.substring(37, 47); // boleto bancario (Campo5)
+            // convenio (48): sem posicao fixa de valor conhecida (mesma
+            // limitacao ja documentada pro DV de convenio) - mantem a
+            // aproximacao antiga so pra ter algum numero de demonstracao.
+            default -> linhaDigitavel.substring(linhaDigitavel.length() - 10);
+        };
+        long centavos = Long.parseLong(digitosValor);
         return BigDecimal.valueOf(centavos, 2);
     }
 }

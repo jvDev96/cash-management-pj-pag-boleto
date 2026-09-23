@@ -73,7 +73,15 @@
   flex-direction: column;
   gap: 4px;
   position: absolute;
-  top: calc(100% + var(--espaco-sm));
+  // DECISAO: top: 100% (encostado), nao calc(100% + espaco) com vao.
+  // PORQUE: bug real reportado - com um vao entre .usuario e o tooltip, o
+  // mouse passa por uma faixa que nao pertence a NENHUM dos dois elementos
+  // ao descer da area do nome ate o link "+ Autodeposito" - o :hover se
+  // perde no meio do caminho e o tooltip fecha antes do clique chegar.
+  // Encostado (sem vao), a area "hovertable" fica continua: sair de
+  // .usuario so acontece entrando direto em .tooltipSaldo (que e filho no
+  // DOM, entao mantem o :hover do pai enquanto o mouse estiver sobre ele).
+  top: 100%;
   right: 0;
   min-width: 220px;
   padding: var(--espaco-md);
