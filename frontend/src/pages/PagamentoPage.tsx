@@ -1,3 +1,4 @@
+import { lazy, Suspense, useState } from 'react'
 import { useBoletoValidation } from '../hooks/useBoletoValidation'
 import { useBoletoPreview } from '../hooks/useBoletoPreview'
 import { usePaymentSaga } from '../hooks/usePaymentSaga'
@@ -7,8 +8,18 @@ import { PaymentStatusTracker } from '../components/PaymentStatusTracker'
 import { BotaoVoltar } from '../components/BotaoVoltar'
 import styles from './PagamentoPage.module.scss'
 
+// DECISAO: import dinamico (code-splitting), nao import estatico no topo.
+// PORQUE: @zxing/library sozinha adiciona ~500KB ao bundle principal - custo
+// pago por TODO usuario, mesmo quem nunca clica em "Escanear". Com
+// React.lazy, esse pedaço só é baixado no momento em que o botão é clicado,
+// mantendo o bundle inicial pequeno pro caminho comum (digitar/colar).
+const LeitorCodigoBarras = lazy(() =>
+  import('../components/LeitorCodigoBarras').then((m) => ({ default: m.LeitorCodigoBarras }))
+)
+
 export function PagamentoPage() {
   const { linhaDigitavel, alterarLinhaDigitavel, resultado, limpar } = useBoletoValidation()
+  const [leitorAberto, setLeitorAberto] = useState(false)
   const { preview } = useBoletoPreview(linhaDigitavel, resultado.valido)
   const {
     sagaId,
@@ -84,7 +95,21 @@ export function PagamentoPage() {
           aoAlterar={alterarLinhaDigitavel}
           resultado={resultado}
         />
+        <button type="button" className={styles.botaoEscanear} onClick={() => setLeitorAberto(true)}>
+          📷 Escanear código de barras
+        </button>
       </div>
+      {leitorAberto && (
+        <Suspense fallback={null}>
+          <LeitorCodigoBarras
+            aoLer={(codigo) => {
+              alterarLinhaDigitavel(codigo)
+              setLeitorAberto(false)
+            }}
+            aoFechar={() => setLeitorAberto(false)}
+          />
+        </Suspense>
+      )}
       {resultado.valido && preview?.encontrado && (
         <PaymentReviewCard
           preview={preview}
