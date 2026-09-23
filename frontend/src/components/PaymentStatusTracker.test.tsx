@@ -80,4 +80,37 @@ describe("PaymentStatusTracker", () => {
 
     expect(screen.queryByText(/Protocolo:/)).toBeNull();
   });
+
+  it("com boleto informado, mostra beneficiario/valor/tipo/banco", () => {
+    const historico: HistoricoEntry[] = [{ estado: "RECEBIDO", timestamp: "T1" }];
+
+    render(
+      <PaymentStatusTracker
+        estado="RECEBIDO"
+        historico={historico}
+        motivoFalha={null}
+        protocolo={null}
+        boleto={{
+          beneficiario: "Lojas Renner S.A.",
+          valor: 150.5,
+          vencimento: "2026-10-15",
+          linhaDigitavel: "34191111112222233333244444555559599990000010000".slice(0, 47),
+        }}
+      />
+    );
+
+    expect(screen.getByText("Lojas Renner S.A.")).toBeTruthy();
+    expect(screen.getByText(/R\$\s*150,50/)).toBeTruthy();
+    expect(screen.getByText("15/10/2026")).toBeTruthy();
+    expect(screen.getByText("Boleto bancário")).toBeTruthy();
+    expect(screen.getByText("Itaú Unibanco")).toBeTruthy();
+  });
+
+  it("sem boleto informado, nao mostra o resumo", () => {
+    const historico: HistoricoEntry[] = [{ estado: "RECEBIDO", timestamp: "T1" }];
+
+    render(<PaymentStatusTracker estado="RECEBIDO" historico={historico} motivoFalha={null} protocolo={null} />);
+
+    expect(screen.queryByText("Beneficiário")).toBeNull();
+  });
 });
