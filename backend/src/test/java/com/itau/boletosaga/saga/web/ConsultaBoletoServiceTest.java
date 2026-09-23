@@ -63,6 +63,16 @@ class ConsultaBoletoServiceTest {
         assertEquals(BigDecimal.ZERO.setScale(2), resposta.valor());
     }
 
+    @Test
+    void convenioNaoTemBancoEmissorMasBoletoBancarioTem() {
+        semSagaExistente();
+        String linhaConvenio = "818530741850296307418526963074185298630741852969"; // 48 digitos
+        String linhaBoleto = "34191791234567890123456789012345678901234561"; // 47 digitos, Itau
+
+        assertNull(service.consultar(linhaConvenio).banco());
+        assertEquals("Itau Unibanco", service.consultar(linhaBoleto).banco());
+    }
+
     private void semSagaExistente() {
         when(sagaRepository.findFirstByLinhaDigitavelAndEstadoNotInOrderByCriadoEmDesc(
                 org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))

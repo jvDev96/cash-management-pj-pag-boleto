@@ -41,8 +41,14 @@ public class ConsultaBoletoService {
             default -> "Formato desconhecido";
         };
 
+        // convenio (48 digitos) nao tem "banco emissor" - os 3 primeiros
+        // digitos ali sao produto+segmento+identificador (Layout FEBRABAN de
+        // Arrecadacao), nao um codigo de banco. Diferente de "nao reconhecido"
+        // (que ainda faz sentido perguntar de novo), aqui o campo nao existe.
         String codigoBanco = linhaDigitavel.substring(0, 3);
-        String banco = BANCOS.getOrDefault(codigoBanco, "Banco nao identificado");
+        String banco = linhaDigitavel.length() == 48
+                ? null
+                : BANCOS.getOrDefault(codigoBanco, "Banco nao identificado");
 
         Optional<Saga> sagaExistente = sagaRepository.findFirstByLinhaDigitavelAndEstadoNotInOrderByCriadoEmDesc(
                 linhaDigitavel, SagaState.ESTADOS_QUE_NAO_BLOQUEIAM_NOVO_PAGAMENTO);

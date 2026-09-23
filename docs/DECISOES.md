@@ -553,11 +553,20 @@ de arquitetura) e [Arquitetura Implementada](https://claude.ai/artifact/9BkZn2ER
 > pra exibição reativa no client antes do GET confirmar.
 
 ### `validation/bancos.ts:10` — `detectarBanco()`
-> **DECISAO:** os 3 primeiros dígitos são o código do banco emissor em
-> QUALQUER dos 3 formatos (código de barras, boleto bancário, convênio) —
-> é a mesma posição porque a linha digitável é só uma reordenação do
-> código de barras, e o código de barras começa com banco(3) + moeda(1) +
-> DV(1) + ...
+> **DECISAO:** os 3 primeiros dígitos são o código do banco emissor no
+> boleto bancário e no código de barras — é a mesma posição porque a linha
+> digitável é só uma reordenação do código de barras, e o código de
+> barras começa com banco(3) + moeda(1) + DV(1) + ...
+> **DECISAO:** convênio (48 dígitos) retorna sempre `null`, sem nem tentar
+> a busca na tabela de bancos.
+> **PORQUE:** achado ao vivo, testando os números de convênio — convênio
+> NÃO tem "banco emissor". Os 3 primeiros dígitos ali são
+> produto+segmento+identificador (Layout FEBRABAN de Arrecadação), um
+> conceito diferente. A suposição anterior ("mesma posição em qualquer
+> formato") estava errada especificamente pro convênio — mostrar "Banco
+> não identificado" nesse caso seria enganoso (parece erro de digitação,
+> mas é esperado o campo não existir). Mesma decisão espelhada no backend
+> (`ConsultaBoletoService.consultar`).
 
 ### `hooks/useBoletoValidation.ts:7` — `alterarLinhaDigitavel()`
 > **DECISAO:** sanitização (remover pontuação) acontece aqui, no setter,

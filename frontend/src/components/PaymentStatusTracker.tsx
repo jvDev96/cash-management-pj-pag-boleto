@@ -41,8 +41,12 @@ export function PaymentStatusTracker({ estado, historico, protocolo, motivoFalha
           <dd>{boleto.vencimento ? formatarData(boleto.vencimento) : "—"}</dd>
           <dt>Tipo</dt>
           <dd>{(boleto.linhaDigitavel && rotuloTipo(detectarFormato(boleto.linhaDigitavel))) ?? "—"}</dd>
-          <dt>Banco</dt>
-          <dd>{(boleto.linhaDigitavel && detectarBanco(boleto.linhaDigitavel)) ?? "Não identificado"}</dd>
+          {boleto.linhaDigitavel && detectarFormato(boleto.linhaDigitavel) !== "CONVENIO" && (
+            <>
+              <dt>Banco</dt>
+              <dd>{detectarBanco(boleto.linhaDigitavel) ?? "Não identificado"}</dd>
+            </>
+          )}
         </dl>
       )}
       <ol className={styles.lista}>

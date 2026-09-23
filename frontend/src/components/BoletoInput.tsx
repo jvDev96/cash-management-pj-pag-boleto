@@ -66,8 +66,12 @@ export function BoletoInput({ linhaDigitavel, aoAlterar, resultado }: BoletoInpu
               <dd>{tipoDetectado}</dd>
             </>
           )}
-          <dt>Banco</dt>
-          <dd>{bancoDetectado ?? "Não identificado"}</dd>
+          {resultado.formato !== "CONVENIO" && (
+            <>
+              <dt>Banco</dt>
+              <dd>{bancoDetectado ?? "Não identificado"}</dd>
+            </>
+          )}
           {valorDetectado !== null && (
             <>
               <dt>Valor</dt>

@@ -58,4 +58,21 @@ describe("PaymentReviewCard", () => {
     expect(screen.getByText("Acompanhar Pagamento")).toBeTruthy();
     expect(screen.queryByText("Confirmar Pagamento")).toBeNull();
   });
+
+  it("banco null (convenio) -> nao mostra a linha Banco", () => {
+    render(
+      <PaymentReviewCard preview={{ ...previewMock, tipo: "Convenio/arrecadacao", banco: null }} aoConfirmar={vi.fn()} enviando={false} />
+    );
+
+    expect(screen.queryByText("Banco")).toBeNull();
+  });
+
+  it("desabilitado=true desabilita o botao mesmo sem estar enviando", () => {
+    render(
+      <PaymentReviewCard preview={previewMock} aoConfirmar={vi.fn()} enviando={false} desabilitado={true} />
+    );
+
+    const botao = screen.getByText("Confirmar Pagamento") as HTMLButtonElement;
+    expect(botao.disabled).toBe(true);
+  });
 });

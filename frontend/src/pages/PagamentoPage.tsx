@@ -108,7 +108,8 @@ export function PagamentoPage() {
           preview={preview}
           enviando={enviando}
           rotuloBotao={preview.sagaExistente ? 'Acompanhar Pagamento' : 'Confirmar Pagamento'}
-          mensagemBloqueio={preview.sagaExistente ? mensagemBloqueio(preview.estadoSagaExistente) : undefined}
+          mensagemBloqueio={mensagemBloqueio(preview)}
+          desabilitado={!preview.sagaExistente && preview.valor === null}
           aoConfirmar={() => {
             if (preview.sagaExistente) {
               navigate(`/?view=historico&saga=${preview.sagaExistente}`)
@@ -122,9 +123,14 @@ export function PagamentoPage() {
   )
 }
 
-function mensagemBloqueio(estado: SagaState | null): string {
-  if (estado === 'CONCLUIDO') {
-    return 'Este boleto já foi pago.'
+function mensagemBloqueio(preview: { sagaExistente: string | null; estadoSagaExistente: SagaState | null; valor: number | null }): string | undefined {
+  if (preview.sagaExistente) {
+    return preview.estadoSagaExistente === 'CONCLUIDO'
+      ? 'Este boleto já foi pago.'
+      : 'Este boleto já tem um pagamento em andamento.'
   }
-  return 'Este boleto já tem um pagamento em andamento.'
+  if (preview.valor === null) {
+    return 'Este documento não representa um valor monetário direto (é quantidade ou valor de referência) — não é possível confirmar o pagamento.'
+  }
+  return undefined
 }

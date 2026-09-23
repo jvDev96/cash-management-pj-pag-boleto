@@ -7,6 +7,7 @@ type PaymentReviewCardProps = {
   enviando: boolean;
   rotuloBotao?: string;
   mensagemBloqueio?: string;
+  desabilitado?: boolean;
 };
 
 export function PaymentReviewCard({
@@ -15,6 +16,7 @@ export function PaymentReviewCard({
   enviando,
   rotuloBotao = "Confirmar Pagamento",
   mensagemBloqueio,
+  desabilitado = false,
 }: PaymentReviewCardProps) {
   return (
     <div className={styles.card}>
@@ -28,8 +30,12 @@ export function PaymentReviewCard({
         <dd className={styles.valorCampo}>{preview.vencimento && formatarData(preview.vencimento)}</dd>
         <dt className={styles.rotulo}>Tipo</dt>
         <dd className={styles.valorCampo}>{preview.tipo}</dd>
-        <dt className={styles.rotulo}>Banco</dt>
-        <dd className={styles.valorCampo}>{preview.banco}</dd>
+        {preview.banco !== null && (
+          <>
+            <dt className={styles.rotulo}>Banco</dt>
+            <dd className={styles.valorCampo}>{preview.banco}</dd>
+          </>
+        )}
       </dl>
       <p className={styles.total}>
         <span>Total a debitar</span>
@@ -40,7 +46,7 @@ export function PaymentReviewCard({
           {mensagemBloqueio}
         </p>
       )}
-      <button type="button" className={styles.botao} onClick={aoConfirmar} disabled={enviando}>
+      <button type="button" className={styles.botao} onClick={aoConfirmar} disabled={enviando || desabilitado}>
         {rotuloBotao}
       </button>
     </div>
