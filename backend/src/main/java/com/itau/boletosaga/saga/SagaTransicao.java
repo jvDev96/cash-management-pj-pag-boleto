@@ -11,13 +11,6 @@ import jakarta.persistence.Id;
 import java.time.Instant;
 import java.util.UUID;
 
-// DECISAO: log append-only, sem estadoAnterior armazenado.
-// PORQUE: cada linha e so "essa saga esteve nesse estado, nesse instante" -
-// o estado anterior e derivavel olhando a linha cronologicamente anterior
-// pra mesma sagaId, nao precisa duplicar o dado. Existe so pra alimentar a
-// timeline do front (timestamp por etapa + qual etapa estava em andamento
-// quando a saga falhou) - nao e a entidade Saga principal, que continua
-// guardando so o estado ATUAL.
 @Entity
 public class SagaTransicao {
 

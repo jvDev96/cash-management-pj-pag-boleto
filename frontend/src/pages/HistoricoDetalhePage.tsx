@@ -7,12 +7,6 @@ type HistoricoDetalhePageProps = {
   sagaId: string;
 };
 
-// DECISAO: recebe sagaId por PROP, nao mais por useParams() de rota.
-// PORQUE: essa tela agora e renderizada dentro da HomePage (view=historico
-// &saga=...), nao numa rota propria - o sagaId ja vem lido do query param
-// um nivel acima, no componente pai.
-// DECISAO: reaproveita PagamentoPage.module.scss, nao cria um arquivo de
-// estilo proprio - e visualmente a MESMA tela de acompanhamento.
 export function HistoricoDetalhePage({ sagaId }: HistoricoDetalhePageProps) {
   const { dados, erro } = usePaymentDetalhe(sagaId);
 

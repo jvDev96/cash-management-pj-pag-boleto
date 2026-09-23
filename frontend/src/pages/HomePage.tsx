@@ -7,13 +7,6 @@ import styles from './HomePage.module.scss'
 
 type Visao = 'pagamento' | 'historico' | 'autodeposito' | null
 
-// DECISAO: pagina unica - os 3 cards ficam sempre visiveis, o conteudo
-// abaixo troca via query param (?view=...), nao via rota separada.
-// PORQUE: pedido explicito de navegacao "full SPA" sem sair da tela - o
-// usuario nunca perde a visao geral (cards) pra entrar numa sub-tela. Query
-// param em vez de useState local: mantem back/forward do navegador
-// funcionando, e a URL continua compartilhavel/atualizavel (ex: um link
-// direto pro Autodeposito), sem precisar de rotas de caminho separadas.
 export function HomePage() {
   const [searchParams] = useSearchParams()
   const visao = searchParams.get('view') as Visao

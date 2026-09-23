@@ -64,11 +64,6 @@ public class SagaMessagingConfig {
         return BindingBuilder.bind(deadLetterQueue()).to(sagaDeadLetterExchange());
     }
 
-    // DECISAO: uma unica Declarables montada a partir da lista de routing keys,
-    // em vez de um par de @Bean (fila + binding) copiado e colado 8 vezes.
-    // PORQUE: as 8 filas sao estruturalmente identicas (mesma config de dead
-    // letter, mesma exchange) - só muda o nome. Copiar o mesmo bloco 8 vezes
-    // vira 8 lugares pra atualizar se a config de DLQ mudar amanha.
     @Bean
     Declarables sagaQueues() {
         List<Declarable> declarables = new ArrayList<>();
@@ -82,30 +77,11 @@ public class SagaMessagingConfig {
         return new Declarables(declarables);
     }
 
-    // DECISAO: forcar amqpAdmin.initialize() explicitamente quando a aplicacao
-    // termina de subir.
-    // PORQUE: nesta versao (Spring Boot 4.1.1), verificamos na pratica que o
-    // RabbitAdmin NAO declara sozinho as filas/exchanges/bindings na
-    // inicializacao (comportamento automatico esperado em versoes anteriores
-    // do Spring nao esta disparando aqui - confirmado isolando o problema:
-    // os beans Declarable existem, mas nada chega no broker ate chamarmos
-    // initialize() manualmente). Em vez de confiar nesse comportamento
-    // implicito, forcamos de forma explicita e documentada.
     @Bean
     ApplicationListener<ApplicationReadyEvent> declaraFilasNaInicializacao(AmqpAdmin amqpAdmin) {
         return event -> amqpAdmin.initialize();
     }
 
-    // DECISAO: JacksonJsonMessageConverter reaproveitando o JsonMapper que o
-    // Spring Boot ja autoconfigura (injetado), em vez de criar um novo "cru".
-    // PORQUE: (1) mensagem em JSON legivel na UI do RabbitMQ, em vez de bytes
-    // de serializacao nativa do Java; (2) reaproveitar o JsonMapper do Spring
-    // evita qualquer divergencia de configuracao entre o que o resto da app
-    // usa pra JSON (ex: respostas REST) e o que a mensageria usa.
-    // NOTA: a partir do Jackson 3.x o pacote mudou de com.fasterxml.jackson
-    // para tools.jackson, e o Spring AMQP tem uma classe nova pra isso
-    // (JacksonJsonMessageConverter, sem o "2") - Jackson2JsonMessageConverter
-    // e a versao antiga, pra quem ainda usa Jackson 2.x.
     @Bean
     MessageConverter messageConverter(JsonMapper jsonMapper) {
         return new JacksonJsonMessageConverter(jsonMapper);

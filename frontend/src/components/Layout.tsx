@@ -7,8 +7,6 @@ type LayoutProps = {
   children: ReactNode;
 };
 
-// DECISAO: Layout fica em components/, nao em pages/ - e usado por TODAS as
-// paginas, nao e uma tela em si.
 export function Layout({ children }: LayoutProps) {
   const { saldo, erro, consultar } = useSaldo();
 

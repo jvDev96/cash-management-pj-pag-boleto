@@ -10,11 +10,6 @@ export type BoletoPreview = {
     tipo: string | null;
     banco: string | null;
     motivoFalha: string | null;
-    // DECISAO: sagaExistente/estadoSagaExistente vem no mesmo preview, nao
-    // numa chamada separada de "verificar duplicidade".
-    // PORQUE: espelha o DTO do backend (BoletoPreviewResponse) - o back ja
-    // anexa isso na MESMA consulta que o front ja fazia a cada linha valida,
-    // sem round-trip extra.
     sagaExistente: string | null;
     estadoSagaExistente: SagaState | null;
 };
@@ -36,11 +31,6 @@ export function useBoletoPreview(linhaDigitavel: string, valido: boolean) {
         setCarregando(true);
         setErro(false);
 
-        // DECISAO: parseia o JSON independente do status HTTP (nao checa res.ok).
-        // PORQUE: o backend devolve 404 com corpo valido quando nao encontra
-        // (encontrado:false + motivoFalha) - isso e uma resposta de dominio, nao
-        // um erro de rede. fetch so lanca excecao em falha real (rede fora do ar,
-        // CORS bloqueado) ou se o JSON vier corrompido.
         fetch(`${BASE_URL}/boletos/${linhaDigitavel}`, { signal: controller.signal })
             .then((res) => res.json())
             .then((dados: BoletoPreview) => {
@@ -49,7 +39,7 @@ export function useBoletoPreview(linhaDigitavel: string, valido: boolean) {
             })
             .catch((e) => {
                 if (e.name === "AbortError") {
-                    return; // cancelado por uma linha mais nova - nao mexe em estado
+                    return;
                 }
                 setPreview(null);
                 setErro(true);

@@ -6,12 +6,6 @@ import java.util.UUID;
 
 import com.itau.boletosaga.saga.SagaState;
 
-// DECISAO: sagaExistente/estadoSagaExistente entram no MESMO DTO de preview,
-// nao um endpoint separado de "verificar duplicidade".
-// PORQUE: o front ja chama esse endpoint a cada linha digitavel valida
-// (useBoletoPreview) - anexar essa informacao aqui evita uma segunda
-// chamada de rede so pra essa checagem, no mesmo espirito de "trazer tudo
-// que a tela precisa numa chamada so" ja usado em PagamentoResponse.
 public record BoletoPreviewResponse(
         boolean encontrado,
         String beneficiario,

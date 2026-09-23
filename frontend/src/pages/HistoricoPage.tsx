@@ -53,11 +53,6 @@ export function HistoricoPage() {
     );
 }
 
-// DECISAO: o item inteiro e um <Link>, nao so um onClick no <li>.
-// PORQUE: navegacao por link (com <a> de verdade por baixo, via react-router)
-// da suporte nativo a "abrir em nova aba"/"copiar link" e funciona sem JS -
-// um onClick simulando navegacao perderia isso. E troca de rota, continua
-// SPA (react-router intercepta o clique, nunca recarrega a pagina).
 function ItemHistorico({ pagamento }: { pagamento: PagamentoResumo }) {
     const categoria = categoriaPorEstado(pagamento.estado);
 
@@ -82,12 +77,6 @@ function ItemHistorico({ pagamento }: { pagamento: PagamentoResumo }) {
     );
 }
 
-// DECISAO: categoria (concluido/falhou/andamento) e um mapeamento novo, nao
-// reaproveita StatusLinha do timeline/montarTimeline.ts.
-// PORQUE: StatusLinha e sobre a POSICAO de uma etapa na timeline
-// (processando/pendente/concluido/falhou POR LINHA); aqui e sobre o
-// DESFECHO do pagamento inteiro, so 3 categorias - conceito de dominio
-// diferente, mesmo parecendo similar.
 type Categoria = "concluido" | "falhou" | "andamento";
 
 function categoriaPorEstado(estado: SagaState): Categoria {

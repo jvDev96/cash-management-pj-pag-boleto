@@ -9,11 +9,6 @@ import { PaymentReviewCard } from '../components/PaymentReviewCard'
 import { PaymentStatusTracker } from '../components/PaymentStatusTracker'
 import styles from './PagamentoPage.module.scss'
 
-// DECISAO: import dinamico (code-splitting), nao import estatico no topo.
-// PORQUE: @zxing/library sozinha adiciona ~500KB ao bundle principal - custo
-// pago por TODO usuario, mesmo quem nunca clica em "Escanear". Com
-// React.lazy, esse pedaço só é baixado no momento em que o botão é clicado,
-// mantendo o bundle inicial pequeno pro caminho comum (digitar/colar).
 const LeitorCodigoBarras = lazy(() =>
   import('../components/LeitorCodigoBarras').then((m) => ({ default: m.LeitorCodigoBarras }))
 )
@@ -35,12 +30,6 @@ export function PagamentoPage() {
     reiniciar,
   } = usePaymentSaga()
 
-  // DECISAO: "Tentar Novamente" reinicia a saga (chave nova) e reenvia o
-  // MESMO boleto/valor que ja estavam em maos - nao pede pro usuario digitar
-  // de novo.
-  // PORQUE: e a mesma intencao (pagar esse boleto), so uma tentativa nova -
-  // ver CONCEITOS.md sobre por que reusar a idempotency key antiga nao
-  // funcionaria (saga terminal, sem transicao de volta).
   const tentarNovamente = () => {
     reiniciar()
     if (preview?.valor !== null && preview?.valor !== undefined) {
@@ -48,18 +37,11 @@ export function PagamentoPage() {
     }
   }
 
-  // DECISAO: "Novo Pagamento" reseta tudo - saga E o campo de entrada.
-  // PORQUE: diferente de "Tentar Novamente", aqui a intencao mudou (outro
-  // boleto, ou so recomecar do zero) - nao faz sentido manter a linha
-  // digitavel antiga preenchida.
   const novoPagamento = () => {
     reiniciar()
     limpar()
   }
 
-  // DECISAO: sagaId existe -> mostra so o tracker; senao -> input + revisao.
-  // PORQUE: e a mesma troca de tela que o Figma mostra - depois de enviar,
-  // o formulario de entrada sai de cena, so o acompanhamento fica visivel.
   if (sagaId) {
     return (
       <div className={styles.pagina}>
@@ -116,12 +98,6 @@ export function PagamentoPage() {
           />
         </Suspense>
       )}
-      {/* DECISAO: mensagem de "nao encontrado" explicita, nao so o card sumindo em silencio. */}
-      {/* PORQUE: bug real reportado - linha valida ESTRUTURALMENTE (ex: convenio, que */}
-      {/* sempre passa na validacao client-side) mas terminando em "0000" (regra */}
-      {/* deterministica de "boleto nao encontrado" simulada no backend) fazia o card de */}
-      {/* revisao sumir sem nenhuma explicacao - preview.motivoFalha ja existia no hook, */}
-      {/* so nunca era renderizado em lugar nenhum. */}
       {resultado.valido && !carregandoPreview && preview && !preview.encontrado && (
         <p role="alert" className={styles.avisoNaoEncontrado}>
           {preview.motivoFalha ?? 'Não foi possível encontrar esse boleto.'}
@@ -134,16 +110,6 @@ export function PagamentoPage() {
           rotuloBotao={preview.sagaExistente ? 'Acompanhar Pagamento' : 'Confirmar Pagamento'}
           mensagemBloqueio={preview.sagaExistente ? mensagemBloqueio(preview.estadoSagaExistente) : undefined}
           aoConfirmar={() => {
-            // DECISAO: se ja existe uma saga bloqueante pra esse numero de
-            // boleto (ver SagaState.ESTADOS_QUE_NAO_BLOQUEIAM_NOVO_PAGAMENTO
-            // no backend), o botao NAVEGA pro acompanhamento dela em vez de
-            // criar um pagamento novo.
-            // PORQUE: idempotency-key so protege contra reenvio acidental da
-            // MESMA tentativa - nao impede o usuario digitar de proposito,
-            // numa tentativa nova, um documento que ja foi pago ou que ainda
-            // pode vir a ser pago. Reaproveita a mesma secao/visao que o
-            // historico ja usa (?view=historico&saga=... + PaymentStatusTracker),
-            // nao uma tela nova so pra isso.
             if (preview.sagaExistente) {
               navigate(`/?view=historico&saga=${preview.sagaExistente}`)
             } else if (preview.valor !== null) {

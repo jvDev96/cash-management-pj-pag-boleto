@@ -26,9 +26,6 @@ export const TAMANHO_MAXIMO_FORMATO_VALIDO = 48; //especificação FEBRABAN - ma
 export const TAMANHO_MAXIMO_LINHA_DIGITAVEL = 70; //margem de segurança de UI
 
 export function detectarFormato(linhaDigitavel: string): FormatoLinhaDigitavel {
-  // DECISAO: retorno e um union type de strings literais, nao boolean nem string livre.
-  // PORQUE: esse valor vai virar branching de logica (qual validacao rodar depois),
-  // entao o compilador precisa conhecer os 4 casos possiveis - nao so exibicao pro usuario.
   switch (linhaDigitavel.length) {
     case 44:
       return "CODIGO_DE_BARRAS";
@@ -41,9 +38,6 @@ export function detectarFormato(linhaDigitavel: string): FormatoLinhaDigitavel {
   }
 }
 
-// DECISAO: valida "so digitos" acontece na borda (sanitizacao), nao aqui.
-// PORQUE: evitar checagem duplicada - a funcao de dominio confia no contrato
-// de que so recebe string ja sanitizada, mesmo padrao usado pro backend.
 export function validarLinhaDigitavel(linhaDigitavel: string): ResultadoValidacao {
   const formato = detectarFormato(linhaDigitavel);
 
@@ -112,22 +106,17 @@ function validarCodigoDeBarras(codigoDeBarras: string): MotivoInvalido {
   return dvEsperado === dvInformado ? null : "DV_GERAL_INVALIDO";
 }
 
-// DECISAO: mascara aplicada sobre o valor JA sanitizado (so digitos), nunca
-// sobre o que o usuario digitou na hora - o input sempre guarda/valida digito
-// puro (useBoletoValidation), a mascara e so uma camada de apresentacao.
-// PORQUE: separar "o dado" de "como ele aparece" evita que pontuacao de
-// mascara vaze pra dentro da logica de validacao/envio.
 export function mascararLinhaDigitavel(raw: string): string {
   if (raw.length > TAMANHO_MAXIMO_FORMATO_VALIDO) {
-    return raw; // ja passou de qualquer formato valido - mostra cru, sem fingir agrupamento
+    return raw;
   }
   if (raw.length === 44) {
-    return agruparEmBlocos(raw, 11); // codigo de barras: 4 blocos de 11, como impresso sob o barcode
+    return agruparEmBlocos(raw, 11);
   }
   if (raw.length === 48) {
-    return agruparEmBlocos(raw, 12); // convenio: 4 blocos de 12
+    return agruparEmBlocos(raw, 12);
   }
-  return mascararBoletoBancario(raw); // formato "em progresso" e o final de 47 (boleto bancario, o mais comum)
+  return mascararBoletoBancario(raw);
 }
 
 function agruparEmBlocos(raw: string, tamanhoBloco: number): string {
@@ -138,10 +127,6 @@ function agruparEmBlocos(raw: string, tamanhoBloco: number): string {
   return blocos.join(" ");
 }
 
-// DECISAO: mascara do boleto bancario segue os limites de campo da FEBRABAN
-// (Campo1 10, Campo2 11, Campo3 11, Campo4 1, Campo5 14), com "." separando
-// os 5 primeiros digitos do DV de cada campo - mesmo agrupamento impresso no
-// boleto de verdade.
 function mascararBoletoBancario(raw: string): string {
   const campo1 = raw.slice(0, 10);
   const campo2 = raw.slice(10, 21);
@@ -167,27 +152,11 @@ function formatarComPonto(campo: string, posicaoPonto: number): string {
   return `${campo.slice(0, posicaoPonto)}.${campo.slice(posicaoPonto)}`;
 }
 
-// DECISAO: extrai o valor so quando o FORMATO ja e conhecido (length exato
-// de 44 ou 47), independente do DV estar certo ainda.
-// PORQUE: formato/posicao dos campos e uma propriedade ESTRUTURAL (so
-// depende do tamanho), nao da validade do digito verificador - mostrar o
-// valor reativamente, so-cliente, mesmo com uma linha ainda com DV errado
-// (ou nem checado ainda) ajuda o usuario a perceber um erro de transcricao
-// olhando pro valor que "nao bate" com o que ele esperava, sem esperar
-// nem terminar de digitar nem uma chamada de rede.
-// DECISAO: convenio (48 digitos) devolve null - diferente de boleto/codigo
-// de barras, a posicao do valor no convenio NAO e fixa (depende de um
-// digito identificador interno, mesma limitacao ja documentada pro DV de
-// convenio) - extrair errado seria pior que nao mostrar nada.
 export function extrairValorLocal(linhaDigitavel: string, formato: FormatoLinhaDigitavel): number | null {
   if (formato === "BOLETO") {
-    // Campo5 (posicoes 33-47) = vencimento(4) + valor(10) - mesma posicao
-    // (ultimos 10 digitos da linha inteira) usada em ConsultaBoletoService
-    // no backend.
     return centavosParaReais(linhaDigitavel.slice(37, 47));
   }
   if (formato === "CODIGO_DE_BARRAS") {
-    // codigo de barras: banco(3) + moeda(1) + DV(1) + vencimento(4) + valor(10) + campo-livre(25)
     return centavosParaReais(linhaDigitavel.slice(9, 19));
   }
   return null;

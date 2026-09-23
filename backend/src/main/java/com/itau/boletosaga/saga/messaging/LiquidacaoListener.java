@@ -21,13 +21,6 @@ public class LiquidacaoListener {
 
     private static final Logger log = LoggerFactory.getLogger(LiquidacaoListener.class);
 
-    // DECISAO: so verifica o limiar de R$500 aqui, sem repetir o de R$700.
-    // PORQUE: um valor >= R$700 ja teria sido barrado antes, na reserva de
-    // saldo - no fluxo normal, a saga nunca chega ate aqui com esse valor.
-    // E uma simulacao pro case, nao uma validacao defensiva de producao.
-    // Continua sendo uma falha de NEGOCIO independente de saldo (ex: sistema
-    // de liquidacao bancaria rejeitou) - por isso nao usa Cliente aqui, so
-    // no caminho de sucesso (ver confirmarDebito abaixo).
     private static final BigDecimal LIMITE_FALHA_LIQUIDACAO = new BigDecimal("500.00");
 
     private final RabbitTemplate rabbitTemplate;
@@ -45,7 +38,6 @@ public class LiquidacaoListener {
         try {
             SimulacaoDelay.aplicar();
             LiquidacaoProcessadaEvent evento = processar(comando);
-            // ver DECISAO sobre ordem publish-antes-do-ack em ValidacaoBoletoListener
             rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.EVT_LIQUIDACAO_PROCESSADA, evento);
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
@@ -58,13 +50,6 @@ public class LiquidacaoListener {
         if (comando.valor().compareTo(LIMITE_FALHA_LIQUIDACAO) >= 0) {
             return LiquidacaoProcessadaEvent.falha(comando.sagaId(), "Falha na liquidacao bancaria (simulado)");
         }
-        // DECISAO: confirmarDebito (mexe no saldo REAL) so acontece aqui, no
-        // sucesso da liquidacao - nunca na reserva.
-        // PORQUE: o saldo disponivel ja tinha sido descontado na reserva
-        // (sinalizacao); o saldo real so pode ser debitado quando o dinheiro
-        // de fato saiu, ou seja, quando a liquidacao bancaria confirma. Se a
-        // liquidacao falhar, o real nunca chega a mudar - so o disponivel,
-        // que a compensacao devolve.
         Cliente cliente = clienteRepository.findById(ClienteConfig.ID_CLIENTE_DEMO)
                 .orElseThrow(() -> new IllegalStateException("Cliente demo nao foi inicializado"));
         cliente.confirmarDebito(comando.valor());

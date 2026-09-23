@@ -14,17 +14,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
-// DECISAO: classe separada de SagaOrchestrator.
-// PORQUE: o Orchestrator reage a EVENTOS (o que aconteceu); esse scheduler
-// reage a PASSAGEM DE TEMPO (o que nao aconteceu). Sao dois gatilhos
-// diferentes de mudanca de estado - cada classe fica com uma
-// responsabilidade so.
 @Component
 public class SagaTimeoutScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(SagaTimeoutScheduler.class);
 
-    // so os estados "esperando resposta de alguem" precisam de vigia
     private static final List<SagaState> ESTADOS_MONITORADOS = List.of(
             SagaState.RECEBIDO, SagaState.VALIDADO, SagaState.LIQUIDACAO_ENVIADA, SagaState.SALDO_LIBERADO
     );
@@ -52,13 +46,6 @@ public class SagaTimeoutScheduler {
             try {
                 aplicarTimeout(saga);
             } catch (OptimisticLockingFailureException e) {
-                // DECISAO: capturar essa excecao especificamente e so
-                // logar, sem propagar.
-                // PORQUE: significa que a saga mudou de estado entre a
-                // consulta e o save - o SagaOrchestrator processou um
-                // evento real bem nessa janela (a corrida que o @Version
-                // existe pra proteger). Nao e erro do sistema, e o timeout
-                // chegando tarde demais - a saga ja nao precisa mais dele.
                 log.info("Saga {} mudou de estado antes do timeout ser aplicado - ignorando.", saga.getId());
             } catch (Exception e) {
                 log.error("Erro aplicando timeout na saga {}", saga.getId(), e);

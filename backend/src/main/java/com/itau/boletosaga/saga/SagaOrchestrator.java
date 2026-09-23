@@ -26,11 +26,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-// DECISAO: SagaOrchestrator mora em "saga" (domínio), não em "saga.messaging".
-// PORQUE: ele é quem DECIDE o que fazer a seguir, não so transporta mensagem -
-// mora mais perto de Saga/SagaState do que da infraestrutura pura de fila. Os
-// listeners simulados ficam em messaging porque sao adaptadores substituindo
-// sistemas externos; o Orchestrator é o cerebro do proprio case.
 @Component
 public class SagaOrchestrator {
 
@@ -47,27 +42,9 @@ public class SagaOrchestrator {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    // DECISAO: registro devolvido pelo iniciar() diz se a saga e nova ou ja
-    // existia.
-    // PORQUE: o controller REST precisa saber disso pra decidir o codigo
-    // HTTP certo - 202 (Accepted) numa criacao de verdade, 200 (OK) num
-    // reenvio idempotente que so devolveu o que ja existia.
     public record ResultadoIniciarSaga(Saga saga, boolean novaSaga) {
     }
 
-    // DECISAO: duas camadas de defesa contra idempotencyKey duplicada.
-    // PORQUE: (1) findByIdempotencyKey antes de criar cobre o caso comum
-    // (reenvio depois que a primeira saga ja existe). (2) capturar
-    // DataIntegrityViolationException cobre a corrida real - duas
-    // requisicoes com a MESMA chave chegando ao mesmo tempo, as duas
-    // passando pelo findBy antes de qualquer uma salvar. Nesse caso a
-    // constraint UNIQUE do banco rejeita a segunda gravacao; em vez de
-    // deixar isso virar um erro feio pro cliente, buscamos de novo e
-    // devolvemos a saga que "venceu" a corrida, como se fosse reenvio normal.
-    // LIMITACAO CONHECIDA: salvar a saga e publicar o comando nao sao
-    // atomicos (sao dois sistemas diferentes). Se o publish falhar depois do
-    // save, a saga fica presa em RECEBIDO ate o timeout/scheduler (RNF03)
-    // detectar e reagir.
     public ResultadoIniciarSaga iniciar(String idempotencyKey, String linhaDigitavel, BigDecimal valor) {
         Optional<Saga> existente = sagaRepository.findByIdempotencyKey(idempotencyKey);
         if (existente.isPresent()) {
@@ -89,33 +66,15 @@ public class SagaOrchestrator {
         return saga;
     }
 
-    // DECISAO: helper unico que sempre salva a saga E registra a transicao no
-    // historico, junto.
-    // PORQUE: evita esquecer de logar em algum dos varios pontos que mudam
-    // estado - o historico existe especificamente pra alimentar a timeline do
-    // front (timestamp por etapa, e qual etapa estava em andamento quando a
-    // saga falhou), entao toda gravacao de saga precisa gerar uma linha.
     private void salvarComHistorico(Saga saga) {
         sagaRepository.save(saga);
         registrarTransicao(saga);
     }
 
-    // DECISAO: separado de salvarComHistorico() especificamente pro caso da
-    // dupla transicao (SALDO_RESERVADO -> LIQUIDACAO_ENVIADA) em
-    // aoReservarSaldo, onde so existe UM save da saga (de proposito, pra nao
-    // reabrir a janela de corrida ja corrigida antes), mas a timeline do
-    // front precisa das DUAS linhas de historico mesmo assim.
-    // PORQUE: nao salva a saga de novo aqui - so registra que ela passou por
-    // esse estado, no instante em que passou.
     private void registrarTransicao(Saga saga) {
         sagaTransicaoRepository.save(new SagaTransicao(saga.getId(), saga.getEstado(), Instant.now()));
     }
 
-    // DECISAO: formato "ITU-" + 7 digitos aleatorios, sem garantia formal de
-    // unicidade (sem constraint UNIQUE no banco).
-    // PORQUE: e so um numero de referencia pra exibicao/suporte, nao uma
-    // chave de negocio (quem identifica a saga de verdade e o sagaId/UUID) -
-    // colisao teoricamente possivel, mas irrelevante pro escopo do case.
     private String gerarProtocolo() {
         int numero = ThreadLocalRandom.current().nextInt(10_000_000);
         return String.format("ITU-%07d", numero);
@@ -153,25 +112,6 @@ public class SagaOrchestrator {
             Saga saga = buscar(evento.sagaId());
             if (podeProcessar(evento.sagaId(), saga, SagaState.VALIDADO)) {
                 if (evento.sucesso()) {
-                    // DECISAO: as duas transicoes (SALDO_RESERVADO ->
-                    // LIQUIDACAO_ENVIADA) em memoria, UM unico save, e SO
-                    // DEPOIS o publish.
-                    // PORQUE: a versao anterior salvava SALDO_RESERVADO,
-                    // publicava, e so depois salvava LIQUIDACAO_ENVIADA -
-                    // deixando uma janela real onde, se a app caisse entre o
-                    // publish (que ja tinha sido enviado) e o segundo save,
-                    // a resposta do LiquidacaoListener chegaria rapido e
-                    // encontraria o estado desatualizado (SALDO_RESERVADO em
-                    // vez de LIQUIDACAO_ENVIADA) - o podeProcessar trataria
-                    // essa resposta legitima como "fora de ordem" e
-                    // descartaria, perdendo o resultado real da liquidacao.
-                    // Sem essa janela: ou o estado final ja esta salvo
-                    // ANTES do publish (e a resposta sempre encontra o
-                    // estado certo), ou o publish falha e a saga fica presa
-                    // em LIQUIDACAO_ENVIADA sem o comando ter saido de
-                    // verdade - cenario seguro, que o scheduler de timeout
-                    // sabe resolver reenviando o comando (nada externo
-                    // aconteceu ainda nesse caso).
                     saga.transicionarPara(SagaState.SALDO_RESERVADO);
                     registrarTransicao(saga);
                     saga.transicionarPara(SagaState.LIQUIDACAO_ENVIADA);
@@ -236,21 +176,6 @@ public class SagaOrchestrator {
         return sagaRepository.findById(sagaId).orElse(null);
     }
 
-    // DECISAO: guarda de idempotencia baseada em ESTADO, nao em chave.
-    // PORQUE: se um evento ja foi processado antes (redelivery do RabbitMQ -
-    // ver CONCEITOS.md sobre at-least-once), a saga ja vai estar num estado
-    // DIFERENTE do esperado aqui. Nesse caso so confirma (ack) sem reaplicar
-    // a transicao - em vez de deixar transicionarPara(...) lancar excecao e
-    // mandar um evento duplicado, mas inofensivo, pra DLQ por engano.
-    // DECISAO: saga == null lanca excecao (vai pra DLQ via o catch do
-    // listener); estado divergente so retorna false (ack, ignora em
-    // silencio).
-    // PORQUE: sao categorias diferentes de problema. Estado divergente e
-    // duplicata/reentrega esperada (at-least-once) - benigno, so ignorar.
-    // Saga nula e anomalia de verdade: nosso proprio sistema so cria um
-    // sagaId a partir de uma saga ja salva, entao um evento com sagaId
-    // inexistente indica algo genuinamente errado - merece ficar preservado
-    // na DLQ pra investigar, nao sumir com so uma linha de log como rastro.
     private boolean podeProcessar(UUID sagaId, Saga saga, SagaState estadoEsperado) {
         if (saga == null) {
             throw new IllegalStateException("Evento recebido para sagaId inexistente: " + sagaId);

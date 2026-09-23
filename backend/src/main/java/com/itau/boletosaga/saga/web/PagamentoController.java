@@ -38,11 +38,6 @@ public class PagamentoController {
         this.sagaTransicaoRepository = sagaTransicaoRepository;
     }
 
-    // DECISAO: 202 (Accepted) quando cria de verdade, 200 (OK) quando so
-    // devolve uma saga que ja existia (reenvio idempotente).
-    // PORQUE: 202 comunica "aceitei, vou processar de forma assincrona" -
-    // nao faz sentido usar o mesmo codigo pra "aceitei" e "ja tinha aceitado
-    // antes", sao situacoes diferentes que o cliente pode querer distinguir.
     @PostMapping
     public ResponseEntity<PagamentoResponse> criar(@RequestHeader("Idempotency-Key") String idempotencyKey,
                                                      @RequestBody CriarPagamentoRequest request) {
@@ -53,9 +48,6 @@ public class PagamentoController {
         return ResponseEntity.status(status).body(montarResposta(resultado.saga()));
     }
 
-    // DECISAO: Page<T> do Spring Data direto, sem DTO de envelope proprio.
-    // PORQUE: Page ja serializa com content/totalElements/totalPages/number -
-    // exatamente o que a paginacao do front precisa, sem reinventar o formato.
     @GetMapping
     public Page<PagamentoResumoResponse> listar(
             @PageableDefault(size = 10, sort = "atualizadoEm", direction = Sort.Direction.DESC) Pageable pageable) {

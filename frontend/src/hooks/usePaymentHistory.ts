@@ -17,10 +17,6 @@ type PaginaPagamentos = {
   number: number;
 };
 
-// DECISAO: mesmo padrao do useBoletoPreview - useEffect + AbortController.
-// PORQUE: trocar de pagina rapido (proximo/anterior varias vezes) tem o
-// mesmo risco de condicao de corrida - resposta antiga chegando depois da
-// mais nova e sobrescrevendo o estado com a pagina errada.
 export function usePaymentHistory() {
   const [pagina, setPagina] = useState(0);
   const [dados, setDados] = useState<PaginaPagamentos | null>(null);

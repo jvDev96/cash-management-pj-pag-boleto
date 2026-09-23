@@ -16,16 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 
-// DECISAO: reserva/compensacao mexem no saldo DISPONIVEL de verdade
-// (Cliente, no Postgres), nao mais num limiar fixo comparado contra o valor
-// do boleto.
-// PORQUE: o limiar antigo (>=R$700 falha) era uma simulacao pura, sem estado
-// nenhum por tras. Isso: (1) faz reserva/compensacao terem efeito real e
-// observavel (GET /cliente/saldo muda de verdade); (2) preserva a mesma
-// regra deterministica de demonstracao ja documentada - o saldo inicial do
-// cliente demo e R$699,99 (ClienteConfig.SALDO_INICIAL_DEMO), entao um
-// boleto de R$700+ ainda falha por saldo insuficiente na primeira tentativa,
-// so que agora e consequencia real do saldo, nao uma constante solta aqui.
 @Component
 public class ContaSaldoListener {
 
@@ -46,7 +36,6 @@ public class ContaSaldoListener {
         try {
             SimulacaoDelay.aplicar();
             SaldoReservadoEvent evento = processarReserva(comando);
-            // ver DECISAO sobre ordem publish-antes-do-ack em ValidacaoBoletoListener
             rabbitTemplate.convertAndSend(SagaMessagingConfig.EXCHANGE, SagaMessagingConfig.EVT_SALDO_RESERVADO, evento);
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {

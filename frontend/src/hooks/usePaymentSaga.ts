@@ -43,10 +43,6 @@ export function usePaymentSaga() {
   const [historico, setHistorico] = useState<HistoricoEntry[]>([]);
   const [protocolo, setProtocolo] = useState<string | null>(null);
 
-  // DECISAO: falhou e derivado aqui, nao recalculado na UI.
-  // PORQUE: "quais estados sao falha terminal" e conhecimento de dominio -
-  // mora perto do SagaState, nao duplicado em cada componente que precisa
-  // decidir se mostra o botao "Tentar Novamente".
   const falhou = estado !== null && ESTADOS_FALHA.includes(estado);
 
   const enviarPagamento = (linhaDigitavel: string, valor: number) => {
@@ -76,12 +72,6 @@ export function usePaymentSaga() {
       });
   };
 
-  // DECISAO: reiniciar troca a idempotency key, nao reusa a antiga.
-  // PORQUE: a saga anterior terminou num estado terminal (REJEITADO/FALHOU),
-  // sem transicao de volta - reenviar com a MESMA chave so devolveria a
-  // saga morta de novo (idempotencia == mesma decisao pra sempre). "Tentar
-  // Novamente" e uma tentativa NOVA e deliberada (o clique), nao um reenvio
-  // acidental - por isso merece chave propria.
   const reiniciar = () => {
     idempotencyKeyRef.current = crypto.randomUUID();
     setSagaId(null);
@@ -110,9 +100,6 @@ export function usePaymentSaga() {
             clearInterval(intervalId);
           }
         })
-        // DECISAO: falha pontual de rede so loga, nao para o polling nem seta erro.
-        // PORQUE: um hiccup de rede no meio do polling nao deveria derrubar a
-        // tentativa inteira - a proxima iteracao do intervalo tenta de novo.
         .catch((e) => {
           console.error("Falha ao consultar status do pagamento", e);
         });

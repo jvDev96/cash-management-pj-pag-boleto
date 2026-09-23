@@ -20,10 +20,6 @@ const ETAPAS_CORE: { estado: SagaState; titulo: string; descricao: string }[] = 
 
 const ESTADOS_TERMINAIS_FALHA: SagaState[] = ["REJEITADO", "FALHOU"];
 
-// DECISAO: loop imperativo (for) em vez de .map com flag externa.
-// PORQUE: a regra depende de um "gap ainda nao encontrado" que precisa
-// persistir entre iteracoes - um for deixa essa dependencia sequencial
-// explicita, em vez de escrever um .map com efeito colateral escondido.
 export function montarTimeline(
     estadoAtual: SagaState | null,
     historico: HistoricoEntry[],
@@ -106,13 +102,6 @@ export function montarTimeline(
                 titulo: "Pagamento não realizado",
                 descricao: "Nenhum valor foi debitado da sua conta",
                 status: "falhou",
-                // DECISAO: busca o timestamp de estadoAtual (REJEITADO ou
-                // FALHOU) no historico, igual o ramo de sucesso ja fazia pra
-                // CONCLUIDO.
-                // PORQUE: bug real - estava hardcoded como null, entao a
-                // linha final de falha nunca mostrava horario nenhum, mesmo
-                // FALHOU/REJEITADO sendo um estado com sua propria linha no
-                // historico (SagaTransicao), com timestamp de verdade.
                 timestamp: historico.find((h) => h.estado === estadoAtual)?.timestamp ?? null,
                 motivoFalha: null,
             }

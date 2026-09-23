@@ -1,6 +1,3 @@
-// DECISAO: Mod10 puro, sem nenhuma dependencia de React.
-// PORQUE: e um algoritmo, nao um componente - testavel isoladamente,
-// reutilizavel em qualquer lugar que precise validar um campo.
 export function calcularMod10(digitos: string): number {
   let soma = 0;
   let multiplicador = 2;

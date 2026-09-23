@@ -39,9 +39,6 @@ public class Saga {
 
     private String motivoFalha;
 
-    // DECISAO: nullable, so preenchido quando a saga chega em CONCLUIDO.
-    // PORQUE: protocolo so faz sentido pra um pagamento que realmente
-    // aconteceu - nao existe "protocolo de tentativa" nesse dominio.
     private String protocolo;
 
     @Column(nullable = false)
@@ -50,25 +47,9 @@ public class Saga {
     @Column(nullable = false)
     private Instant atualizadoEm;
 
-    // DECISAO: campo @Version pra lock otimista.
-    // PORQUE: existe uma corrida real possivel entre o SagaOrchestrator
-    // (reagindo a um evento chegando) e o futuro SagaTimeoutScheduler
-    // (decidindo que essa saga esta presa) tentando escrever no MESMO
-    // registro ao mesmo tempo, com decisoes diferentes. Sem isso, quem salva
-    // por ultimo vence silenciosamente, podendo sobrescrever um resultado
-    // real com um timeout falso (ou o contrario). Com @Version, o Hibernate
-    // controla um numero de versao sozinho: se dois processos tentam salvar
-    // a partir da mesma versao, o segundo recebe
-    // ObjectOptimisticLockingFailureException em vez de sobrescrever sem
-    // avisar.
     @Version
     private Long version;
 
-    // DECISAO: construtor vazio protected, nao public
-    // PORQUE: o Hibernate exige um construtor sem argumentos pra conseguir
-    // instanciar a entidade via reflection ao ler do banco - mas ninguem no
-    // nosso codigo deveria criar uma Saga "vazia" na mao, por isso protected
-    // em vez de public.
     protected Saga() {
     }
 
@@ -82,11 +63,6 @@ public class Saga {
         this.atualizadoEm = Instant.now();
     }
 
-    // DECISAO: transicionarPara em vez de um setEstado(...) publico
-    // PORQUE: um setter generico deixaria qualquer chamador colocar a saga
-    // em QUALQUER estado, ignorando a maquina de estados que a gente acabou
-    // de testar. Esse metodo reusa SagaState.podeTransicionarPara para se
-    // proteger - a entidade nunca fica num estado que a maquina nao permite.
     public void transicionarPara(SagaState novoEstado) {
         if (!estado.podeTransicionarPara(novoEstado)) {
             throw new IllegalStateException(
