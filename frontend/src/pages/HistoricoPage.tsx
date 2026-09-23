@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { usePaymentHistory } from "../hooks/usePaymentHistory";
 import type { PagamentoResumo } from "../hooks/usePaymentHistory";
 import type { SagaState } from "../hooks/usePaymentSaga";
@@ -54,24 +55,31 @@ export function HistoricoPage() {
     );
 }
 
+// DECISAO: o item inteiro e um <Link>, nao so um onClick no <li>.
+// PORQUE: navegacao por link (com <a> de verdade por baixo, via react-router)
+// da suporte nativo a "abrir em nova aba"/"copiar link" e funciona sem JS -
+// um onClick simulando navegacao perderia isso. E troca de rota, continua
+// SPA (react-router intercepta o clique, nunca recarrega a pagina).
 function ItemHistorico({ pagamento }: { pagamento: PagamentoResumo }) {
     const categoria = categoriaPorEstado(pagamento.estado);
 
     return (
-        <li className={styles.item}>
-            <span className={`${styles.icone} ${styles[`icone${capitalizar(categoria)}`]}`} aria-hidden="true">
-                {iconePorCategoria(categoria)}
-            </span>
-            <div className={styles.info}>
-                <strong>{pagamento.beneficiario ?? "Beneficiário não identificado"}</strong>
-                <span className={styles.data}>{formatarData(pagamento.atualizadoEm)}</span>
-            </div>
-            <div className={styles.resumoValor}>
-                <span className={styles.valor}>{formatarValor(pagamento.valor)}</span>
-                <span className={`${styles.rotulo} ${styles[`rotulo${capitalizar(categoria)}`]}`}>
-                    {rotuloPorCategoria(categoria)}
+        <li>
+            <Link to={`/historico/${pagamento.sagaId}`} className={styles.item}>
+                <span className={`${styles.icone} ${styles[`icone${capitalizar(categoria)}`]}`} aria-hidden="true">
+                    {iconePorCategoria(categoria)}
                 </span>
-            </div>
+                <div className={styles.info}>
+                    <strong>{pagamento.beneficiario ?? "Beneficiário não identificado"}</strong>
+                    <span className={styles.data}>{formatarData(pagamento.atualizadoEm)}</span>
+                </div>
+                <div className={styles.resumoValor}>
+                    <span className={styles.valor}>{formatarValor(pagamento.valor)}</span>
+                    <span className={`${styles.rotulo} ${styles[`rotulo${capitalizar(categoria)}`]}`}>
+                        {rotuloPorCategoria(categoria)}
+                    </span>
+                </div>
+            </Link>
         </li>
     );
 }
