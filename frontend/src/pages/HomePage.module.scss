@@ -9,9 +9,16 @@
 
 .nav {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  // DECISAO: 3 colunas fixas (nao auto-fit), com wrap so em telas estreitas.
+  // PORQUE: pedido explicito - os 3 cards ficam na MESMA linha (visao geral
+  // sempre completa e visivel), diferente do layout anterior onde eles
+  // podiam quebrar em coluna unica cedo demais.
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--espaco-md);
-  max-width: 720px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .card {
@@ -19,11 +26,22 @@
   padding: var(--espaco-lg);
   border-radius: var(--raio-borda);
   text-decoration: none;
-  transition: transform 0.15s ease;
+  border: 2px solid transparent;
+  transition: transform 0.15s ease, border-color 0.15s ease;
 
   &:hover {
     transform: translateY(-2px);
   }
+}
+
+.cardAtivo {
+  border-color: var(--cor-secundaria);
+}
+
+.conteudoVisao {
+  margin-top: var(--espaco-xl);
+  padding-top: var(--espaco-xl);
+  border-top: 1px solid var(--cor-borda);
 }
 
 .cardPrimario {

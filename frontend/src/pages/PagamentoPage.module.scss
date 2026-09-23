@@ -23,6 +23,28 @@
   color: var(--cor-erro);
 }
 
+.avisoNaoEncontrado {
+  margin-top: var(--espaco-md);
+  padding: var(--espaco-md);
+  border-radius: var(--raio-borda);
+  background-color: var(--cor-erro-fundo);
+  color: var(--cor-erro);
+  font-size: 14px;
+}
+
+.voltarLista {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: var(--espaco-md);
+  color: var(--cor-texto-secundario);
+  font-size: 14px;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--cor-secundaria);
+  }
+}
+
 .botaoEscanear {
   margin-top: var(--espaco-sm);
   padding: var(--espaco-sm) var(--espaco-md);

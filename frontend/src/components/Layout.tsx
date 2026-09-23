@@ -39,7 +39,7 @@ export function Layout({ children }: LayoutProps) {
                   <dt>Saldo real</dt>
                   <dd>{formatarValor(saldo.saldoReal)}</dd>
                 </dl>
-                <Link to="/autodeposito" className={styles.linkDepositar}>
+                <Link to="/?view=autodeposito" className={styles.linkDepositar}>
                   + Autodepósito
                 </Link>
               </>

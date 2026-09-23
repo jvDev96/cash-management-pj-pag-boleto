@@ -8,6 +8,10 @@ type PagamentoDetalhe = {
   motivoFalha: string | null;
   protocolo: string | null;
   historico: HistoricoEntry[];
+  beneficiario: string | null;
+  valor: number | null;
+  vencimento: string | null;
+  linhaDigitavel: string | null;
 };
 
 const ESTADOS_TERMINAIS: SagaState[] = ["CONCLUIDO", "REJEITADO", "FALHOU"];

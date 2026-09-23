@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { usePaymentHistory } from "../hooks/usePaymentHistory";
 import type { PagamentoResumo } from "../hooks/usePaymentHistory";
 import type { SagaState } from "../hooks/usePaymentSaga";
-import { BotaoVoltar } from "../components/BotaoVoltar";
 import styles from "./HistoricoPage.module.scss";
 
 export function HistoricoPage() {
@@ -10,7 +9,6 @@ export function HistoricoPage() {
 
     return (
         <div className={styles.pagina}>
-            <BotaoVoltar />
             <h1 className={styles.titulo}>Histórico de Pagamentos</h1>
             <p className={styles.subtitulo}>Consulte seus pagamentos anteriores</p>
 
@@ -65,7 +63,7 @@ function ItemHistorico({ pagamento }: { pagamento: PagamentoResumo }) {
 
     return (
         <li>
-            <Link to={`/historico/${pagamento.sagaId}`} className={styles.item}>
+            <Link to={`/?view=historico&saga=${pagamento.sagaId}`} className={styles.item}>
                 <span className={`${styles.icone} ${styles[`icone${capitalizar(categoria)}`]}`} aria-hidden="true">
                     {iconePorCategoria(categoria)}
                 </span>

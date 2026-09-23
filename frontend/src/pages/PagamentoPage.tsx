@@ -7,7 +7,6 @@ import type { SagaState } from '../hooks/usePaymentSaga'
 import { BoletoInput } from '../components/BoletoInput'
 import { PaymentReviewCard } from '../components/PaymentReviewCard'
 import { PaymentStatusTracker } from '../components/PaymentStatusTracker'
-import { BotaoVoltar } from '../components/BotaoVoltar'
 import styles from './PagamentoPage.module.scss'
 
 // DECISAO: import dinamico (code-splitting), nao import estatico no topo.
@@ -23,7 +22,7 @@ export function PagamentoPage() {
   const navigate = useNavigate()
   const { linhaDigitavel, alterarLinhaDigitavel, resultado, limpar } = useBoletoValidation()
   const [leitorAberto, setLeitorAberto] = useState(false)
-  const { preview } = useBoletoPreview(linhaDigitavel, resultado.valido)
+  const { preview, carregando: carregandoPreview } = useBoletoPreview(linhaDigitavel, resultado.valido)
   const {
     sagaId,
     estado,
@@ -64,7 +63,6 @@ export function PagamentoPage() {
   if (sagaId) {
     return (
       <div className={styles.pagina}>
-        <BotaoVoltar />
         <h1 className={styles.titulo}>Pagar Boleto</h1>
         <p className={styles.subtitulo}>Insira o código para consultar e realizar o pagamento</p>
         <PaymentStatusTracker
@@ -72,6 +70,12 @@ export function PagamentoPage() {
           historico={historico}
           motivoFalha={motivoFalha}
           protocolo={protocolo}
+          boleto={{
+            beneficiario: preview?.beneficiario ?? null,
+            valor: preview?.valor ?? null,
+            vencimento: preview?.vencimento ?? null,
+            linhaDigitavel,
+          }}
         />
         {falhou && (
           <button type="button" className={styles.botaoTentarNovamente} onClick={tentarNovamente}>
@@ -89,7 +93,6 @@ export function PagamentoPage() {
 
   return (
     <div className={styles.pagina}>
-      <BotaoVoltar />
       <h1 className={styles.titulo}>Pagar Boleto</h1>
       <p className={styles.subtitulo}>Insira o código para consultar e realizar o pagamento</p>
       <div className={styles.card}>
@@ -113,6 +116,17 @@ export function PagamentoPage() {
           />
         </Suspense>
       )}
+      {/* DECISAO: mensagem de "nao encontrado" explicita, nao so o card sumindo em silencio. */}
+      {/* PORQUE: bug real reportado - linha valida ESTRUTURALMENTE (ex: convenio, que */}
+      {/* sempre passa na validacao client-side) mas terminando em "0000" (regra */}
+      {/* deterministica de "boleto nao encontrado" simulada no backend) fazia o card de */}
+      {/* revisao sumir sem nenhuma explicacao - preview.motivoFalha ja existia no hook, */}
+      {/* so nunca era renderizado em lugar nenhum. */}
+      {resultado.valido && !carregandoPreview && preview && !preview.encontrado && (
+        <p role="alert" className={styles.avisoNaoEncontrado}>
+          {preview.motivoFalha ?? 'Não foi possível encontrar esse boleto.'}
+        </p>
+      )}
       {resultado.valido && preview?.encontrado && (
         <PaymentReviewCard
           preview={preview}
@@ -127,11 +141,11 @@ export function PagamentoPage() {
             // PORQUE: idempotency-key so protege contra reenvio acidental da
             // MESMA tentativa - nao impede o usuario digitar de proposito,
             // numa tentativa nova, um documento que ja foi pago ou que ainda
-            // pode vir a ser pago. Reaproveita a mesma rota/tela que o
-            // historico ja usa (/historico/:sagaId + PaymentStatusTracker),
+            // pode vir a ser pago. Reaproveita a mesma secao/visao que o
+            // historico ja usa (?view=historico&saga=... + PaymentStatusTracker),
             // nao uma tela nova so pra isso.
             if (preview.sagaExistente) {
-              navigate(`/historico/${preview.sagaExistente}`)
+              navigate(`/?view=historico&saga=${preview.sagaExistente}`)
             } else if (preview.valor !== null) {
               enviarPagamento(linhaDigitavel, preview.valor)
             }

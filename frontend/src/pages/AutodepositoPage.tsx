@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { useAutodeposito } from "../hooks/useAutodeposito";
-import { BotaoVoltar } from "../components/BotaoVoltar";
 import styles from "./AutodepositoPage.module.scss";
 
-// DECISAO: pagina propria (nao modal), mesmo sendo "telinha simples".
-// PORQUE: mesmo padrao das outras 2 telas (Pagar Boleto, Historico) -
-// acessivel por link direto, com BotaoVoltar, sem estado escondido atras de
-// um componente que so existe dentro de outra pagina.
+// DECISAO: renderizada dentro da HomePage (?view=autodeposito), nao rota
+// propria - por isso sem botao de voltar: os 3 cards continuam visiveis
+// acima, trocar de visao e so clicar em outro card.
 export function AutodepositoPage() {
   const [valorDigitado, setValorDigitado] = useState("");
   const { depositar, enviando, erro, saldoAtualizado } = useAutodeposito();
@@ -16,7 +14,6 @@ export function AutodepositoPage() {
 
   return (
     <div className={styles.pagina}>
-      <BotaoVoltar />
       <h1 className={styles.titulo}>Autodepósito</h1>
       <p className={styles.subtitulo}>Adicione saldo à sua conta para testar pagamentos</p>
 
