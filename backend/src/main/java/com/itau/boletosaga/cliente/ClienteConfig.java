@@ -13,7 +13,7 @@ public class ClienteConfig {
 
     public static final UUID ID_CLIENTE_DEMO = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
-    static final BigDecimal SALDO_INICIAL_DEMO = new BigDecimal("699.99");
+    static final BigDecimal SALDO_INICIAL_DEMO = new BigDecimal("200.00");
 
     @Bean
     ApplicationListener<ApplicationReadyEvent> seedClienteDemo(ClienteRepository clienteRepository) {
