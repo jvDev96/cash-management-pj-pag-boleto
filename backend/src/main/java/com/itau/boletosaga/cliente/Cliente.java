@@ -83,6 +83,21 @@ public class Cliente {
         this.saldoDisponivel = saldoInicial;
     }
 
+    // DECISAO: deposito soma nos DOIS saldos (real e disponivel), ao mesmo
+    // tempo.
+    // PORQUE: diferente de reservar/liberar/confirmar (que so mexem em UM
+    // saldo de cada vez, porque representam uma reserva em andamento),
+    // deposito e dinheiro entrando de verdade, sem nenhuma reserva
+    // envolvida - fica disponivel pra gastar E ja e real desde o primeiro
+    // instante, nao existe uma "janela" intermediaria como no pagamento.
+    public void depositar(BigDecimal valor) {
+        if (valor.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Valor do deposito precisa ser maior que zero");
+        }
+        this.saldoReal = this.saldoReal.add(valor);
+        this.saldoDisponivel = this.saldoDisponivel.add(valor);
+    }
+
     public UUID getId() {
         return id;
     }

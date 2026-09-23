@@ -103,6 +103,20 @@
   }
 }
 
+.linkDepositar {
+  margin-top: var(--espaco-sm);
+  padding-top: var(--espaco-sm);
+  border-top: 1px solid var(--cor-borda);
+  color: var(--cor-secundaria);
+  font-weight: 700;
+  text-decoration: none;
+  text-align: center;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 .avatar {
   width: 28px;
   height: 28px;

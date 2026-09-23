@@ -48,6 +48,22 @@ class ClienteTest {
     }
 
     @Test
+    void depositarSomaNosDoisSaldosAoMesmoTempo() {
+        Cliente cliente = novoCliente("100.00");
+        cliente.depositar(new BigDecimal("50.00"));
+        assertEquals(new BigDecimal("150.00"), cliente.getSaldoReal());
+        assertEquals(new BigDecimal("150.00"), cliente.getSaldoDisponivel());
+    }
+
+    @Test
+    void depositarValorZeroOuNegativoLancaExcecao() {
+        Cliente cliente = novoCliente("100.00");
+        assertThrows(IllegalArgumentException.class, () -> cliente.depositar(BigDecimal.ZERO));
+        assertThrows(IllegalArgumentException.class, () -> cliente.depositar(new BigDecimal("-10.00")));
+        assertEquals(new BigDecimal("100.00"), cliente.getSaldoReal());
+    }
+
+    @Test
     void reservarELiberarDuasVezesSeguidasVoltaAoSaldoOriginal() {
         Cliente cliente = novoCliente("500.00");
         cliente.reservar(new BigDecimal("500.00"));

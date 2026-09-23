@@ -15,6 +15,10 @@ export function HomePage() {
           <h2 className={styles.cardTitulo}>Ver Histórico de Pagamentos</h2>
           <p className={styles.cardDescricao}>Consultar comprovantes e status</p>
         </Link>
+        <Link to="/autodeposito" className={`${styles.card} ${styles.cardSecundario}`}>
+          <h2 className={styles.cardTitulo}>Autodepósito</h2>
+          <p className={styles.cardDescricao}>Colocar saldo na conta</p>
+        </Link>
       </nav>
     </div>
   )

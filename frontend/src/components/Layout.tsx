@@ -10,7 +10,7 @@ type LayoutProps = {
 // DECISAO: Layout fica em components/, nao em pages/ - e usado por TODAS as
 // paginas, nao e uma tela em si.
 export function Layout({ children }: LayoutProps) {
-  const { saldo, consultar } = useSaldo();
+  const { saldo, erro, consultar } = useSaldo();
 
   return (
     <div className={styles.pagina}>
@@ -29,13 +29,20 @@ export function Layout({ children }: LayoutProps) {
           </span>
           João Victor Pereira
           <div className={styles.tooltipSaldo} role="tooltip">
-            {saldo ? (
-              <dl>
-                <dt>Disponível</dt>
-                <dd>{formatarValor(saldo.saldoDisponivel)}</dd>
-                <dt>Saldo real</dt>
-                <dd>{formatarValor(saldo.saldoReal)}</dd>
-              </dl>
+            {erro ? (
+              <span>Não foi possível carregar o saldo.</span>
+            ) : saldo ? (
+              <>
+                <dl>
+                  <dt>Disponível</dt>
+                  <dd>{formatarValor(saldo.saldoDisponivel)}</dd>
+                  <dt>Saldo real</dt>
+                  <dd>{formatarValor(saldo.saldoReal)}</dd>
+                </dl>
+                <Link to="/autodeposito" className={styles.linkDepositar}>
+                  + Autodepósito
+                </Link>
+              </>
             ) : (
               <span>Carregando saldo...</span>
             )}

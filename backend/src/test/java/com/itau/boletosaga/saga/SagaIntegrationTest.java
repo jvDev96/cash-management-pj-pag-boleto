@@ -24,6 +24,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import com.itau.boletosaga.cliente.Cliente;
 import com.itau.boletosaga.cliente.ClienteConfig;
 import com.itau.boletosaga.cliente.ClienteRepository;
+import com.itau.boletosaga.cliente.ClienteSaldoResponse;
+import com.itau.boletosaga.cliente.DepositoRequest;
 import com.itau.boletosaga.saga.web.BoletoPreviewResponse;
 import com.itau.boletosaga.saga.web.CriarPagamentoRequest;
 import com.itau.boletosaga.saga.web.PagamentoResponse;
@@ -135,6 +137,50 @@ class SagaIntegrationTest {
         // DECISAO: REJEITADO/FALHOU nao bloqueiam (SagaState.ESTADOS_QUE_NAO_BLOQUEIAM_NOVO_PAGAMENTO)
         // - documento que nunca chegou a pagar de verdade pode ser tentado de novo.
         assertNull(preview.sagaExistente());
+    }
+
+    @Test
+    void depositoAumentaOSaldoEDestravaAReservaQueAntesSeriaRejeitadaPorSaldoInsuficiente() {
+        HttpEntity<DepositoRequest> pedidoDeposito = new HttpEntity<>(new DepositoRequest(new BigDecimal("300.00")));
+        ResponseEntity<ClienteSaldoResponse> respostaDeposito =
+                restTemplate.postForEntity("/cliente/depositar", pedidoDeposito, ClienteSaldoResponse.class);
+
+        assertEquals(HttpStatus.OK, respostaDeposito.getStatusCode());
+        assertNotNull(respostaDeposito.getBody());
+        assertEquals(new BigDecimal("999.99"), respostaDeposito.getBody().saldoDisponivel());
+        assertEquals(new BigDecimal("999.99"), respostaDeposito.getBody().saldoReal());
+
+        // DECISAO: valor 800 - sem o deposito, teria sido REJEITADO na reserva
+        // (saldo insuficiente, ja provado no outro teste). Com o deposito, a
+        // reserva passa (800 <= 999.99) - mas o valor tambem e >= 500, entao
+        // essa MESMA tentativa ainda falha depois, na liquidacao (regra
+        // deterministica separada, nao relacionada a saldo - ver
+        // LiquidacaoListener). O que este teste prova e especificamente que o
+        // deposito destravou a reserva: o estado final e FALHOU (passou pela
+        // reserva), nao REJEITADO (que seria "nem chegou a reservar").
+        String linhaDigitavel = "34191791234567890123456789012345678901234565";
+        UUID sagaId = criarPagamento(linhaDigitavel, new BigDecimal("800.00"), HttpStatus.ACCEPTED);
+        Saga sagaFinal = aguardarEstadoTerminal(sagaId);
+
+        assertEquals(SagaState.FALHOU, sagaFinal.getEstado());
+
+        // a compensacao devolveu a reserva pro disponivel - saldo volta pra
+        // onde estava antes dessa tentativa (o real nunca foi confirmado).
+        Cliente cliente = clienteRepository.findById(ClienteConfig.ID_CLIENTE_DEMO).orElseThrow();
+        assertEquals(new BigDecimal("999.99"), cliente.getSaldoDisponivel());
+        assertEquals(new BigDecimal("999.99"), cliente.getSaldoReal());
+    }
+
+    @Test
+    void depositoDeValorZeroOuNegativoERejeitado() {
+        HttpEntity<DepositoRequest> pedidoInvalido = new HttpEntity<>(new DepositoRequest(new BigDecimal("0.00")));
+        ResponseEntity<ClienteSaldoResponse> resposta =
+                restTemplate.postForEntity("/cliente/depositar", pedidoInvalido, ClienteSaldoResponse.class);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resposta.getStatusCode());
+
+        Cliente cliente = clienteRepository.findById(ClienteConfig.ID_CLIENTE_DEMO).orElseThrow();
+        assertEquals(new BigDecimal("699.99"), cliente.getSaldoDisponivel());
     }
 
     private BoletoPreviewResponse consultarPreview(String linhaDigitavel) {
