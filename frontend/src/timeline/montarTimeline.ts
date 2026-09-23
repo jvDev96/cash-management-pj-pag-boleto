@@ -106,7 +106,14 @@ export function montarTimeline(
                 titulo: "Pagamento não realizado",
                 descricao: "Nenhum valor foi debitado da sua conta",
                 status: "falhou",
-                timestamp: null,
+                // DECISAO: busca o timestamp de estadoAtual (REJEITADO ou
+                // FALHOU) no historico, igual o ramo de sucesso ja fazia pra
+                // CONCLUIDO.
+                // PORQUE: bug real - estava hardcoded como null, entao a
+                // linha final de falha nunca mostrava horario nenhum, mesmo
+                // FALHOU/REJEITADO sendo um estado com sua propria linha no
+                // historico (SagaTransicao), com timestamp de verdade.
+                timestamp: historico.find((h) => h.estado === estadoAtual)?.timestamp ?? null,
                 motivoFalha: null,
             }
             : {

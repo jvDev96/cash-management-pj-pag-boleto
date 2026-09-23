@@ -59,6 +59,10 @@ describe("montarTimeline", () => {
     expect(linhas[2].motivoFalha).toBe("Saldo insuficiente");
     expect(linhas[3].motivoFalha).toBeNull();
     expect(linhas[4].titulo).toBe("Pagamento não realizado");
+    // DECISAO: bug real - o timestamp da linha RESULTADO em caso de falha
+    // ficava hardcoded null, mesmo REJEITADO/FALHOU tendo sua propria linha
+    // (com timestamp de verdade) no historico.
+    expect(linhas[4].timestamp).toBe("T3");
   });
 
   it("falha tardia: todas as 4 core sucederam, falha so aparece no resultado", () => {
@@ -77,5 +81,6 @@ describe("montarTimeline", () => {
       "concluido", "concluido", "concluido", "concluido", "falhou",
     ]);
     expect(linhas[4].titulo).toBe("Pagamento não realizado");
+    expect(linhas[4].timestamp).toBe("T6");
   });
 });
