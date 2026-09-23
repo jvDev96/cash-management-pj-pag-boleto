@@ -111,3 +111,58 @@ function validarCodigoDeBarras(codigoDeBarras: string): MotivoInvalido {
   const dvInformado = Number(codigoDeBarras[4]);
   return dvEsperado === dvInformado ? null : "DV_GERAL_INVALIDO";
 }
+
+// DECISAO: mascara aplicada sobre o valor JA sanitizado (so digitos), nunca
+// sobre o que o usuario digitou na hora - o input sempre guarda/valida digito
+// puro (useBoletoValidation), a mascara e so uma camada de apresentacao.
+// PORQUE: separar "o dado" de "como ele aparece" evita que pontuacao de
+// mascara vaze pra dentro da logica de validacao/envio.
+export function mascararLinhaDigitavel(raw: string): string {
+  if (raw.length > TAMANHO_MAXIMO_FORMATO_VALIDO) {
+    return raw; // ja passou de qualquer formato valido - mostra cru, sem fingir agrupamento
+  }
+  if (raw.length === 44) {
+    return agruparEmBlocos(raw, 11); // codigo de barras: 4 blocos de 11, como impresso sob o barcode
+  }
+  if (raw.length === 48) {
+    return agruparEmBlocos(raw, 12); // convenio: 4 blocos de 12
+  }
+  return mascararBoletoBancario(raw); // formato "em progresso" e o final de 47 (boleto bancario, o mais comum)
+}
+
+function agruparEmBlocos(raw: string, tamanhoBloco: number): string {
+  const blocos: string[] = [];
+  for (let i = 0; i < raw.length; i += tamanhoBloco) {
+    blocos.push(raw.slice(i, i + tamanhoBloco));
+  }
+  return blocos.join(" ");
+}
+
+// DECISAO: mascara do boleto bancario segue os limites de campo da FEBRABAN
+// (Campo1 10, Campo2 11, Campo3 11, Campo4 1, Campo5 14), com "." separando
+// os 5 primeiros digitos do DV de cada campo - mesmo agrupamento impresso no
+// boleto de verdade.
+function mascararBoletoBancario(raw: string): string {
+  const campo1 = raw.slice(0, 10);
+  const campo2 = raw.slice(10, 21);
+  const campo3 = raw.slice(21, 32);
+  const campo4 = raw.slice(32, 33);
+  const campo5 = raw.slice(33, 47);
+
+  return [
+    formatarComPonto(campo1, 5),
+    formatarComPonto(campo2, 5),
+    formatarComPonto(campo3, 5),
+    campo4,
+    campo5,
+  ]
+    .filter((parte) => parte.length > 0)
+    .join(" ");
+}
+
+function formatarComPonto(campo: string, posicaoPonto: number): string {
+  if (campo.length <= posicaoPonto) {
+    return campo;
+  }
+  return `${campo.slice(0, posicaoPonto)}.${campo.slice(posicaoPonto)}`;
+}
